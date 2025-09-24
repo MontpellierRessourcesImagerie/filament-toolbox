@@ -1,5 +1,8 @@
 # filament-toolbox
 
+Tools useful for segmenting and analyzing filaments.
+=======
+
 [![License MIT](https://img.shields.io/pypi/l/filament-toolbox.svg?color=green)](https://github.com/MontpellierRessourcesImagerie/filament-toolbox/raw/main/LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/filament-toolbox.svg?color=green)](https://pypi.org/project/filament-toolbox)
 [![Python Version](https://img.shields.io/pypi/pyversions/filament-toolbox.svg?color=green)](https://python.org)
@@ -77,3 +80,4 @@ If you encounter any problems, please [file an issue] along with a detailed desc
 [tox]: https://tox.readthedocs.io/en/latest/
 [pip]: https://pypi.org/project/pip/
 [PyPI]: https://pypi.org/
+
