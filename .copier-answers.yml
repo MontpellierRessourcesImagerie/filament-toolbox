@@ -1,0 +1,18 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: v1.1.0
+_src_path: https://github.com/napari/napari-plugin-template
+display_name: Filament Toolbox
+email: volker.baecker@mri.cnrs.fr
+full_name: Volker Baecker
+github_repository_url: https://github.com/MontpellierRessourcesImagerie/filament-toolbox
+github_username_or_organization: MontpellierRessourcesImagerie
+include_reader_plugin: true
+include_sample_data_plugin: true
+include_widget_plugin: true
+include_writer_plugin: false
+install_dependabot: true
+install_precommit: true
+license: MIT
+module_name: filament_toolbox
+plugin_name: filament-toolbox
+short_description: A number of tools useful for segmenting and analyzing filaments.

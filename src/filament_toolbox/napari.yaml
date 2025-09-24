@@ -1,0 +1,44 @@
+name: filament-toolbox
+display_name: Filament Toolbox
+# use 'hidden' to remove plugin from napari hub search results
+visibility: public
+# see https://napari.org/stable/plugins/technical_references/manifest.html#fields for valid categories
+# categories: []
+contributions:
+  commands:
+    - id: filament-toolbox.get_reader
+      python_name: filament_toolbox._reader:napari_get_reader
+      title: Open data with Filament Toolbox
+    - id: filament-toolbox.make_sample_data
+      python_name: filament_toolbox._sample_data:make_sample_data
+      title: Load sample data from Filament Toolbox
+    - id: filament-toolbox.make_container_widget
+      python_name: filament_toolbox:ImageThreshold
+      title: Make threshold Container widget
+    - id: filament-toolbox.make_magic_widget
+      python_name: filament_toolbox:threshold_magic_widget
+      title: Make threshold magic widget
+    - id: filament-toolbox.make_function_widget
+      python_name: filament_toolbox:threshold_autogenerate_widget
+      title: Make threshold function widget
+    - id: filament-toolbox.make_qwidget
+      python_name: filament_toolbox:ExampleQWidget
+      title: Make example QWidget
+  readers:
+    - command: filament-toolbox.get_reader
+      accepts_directories: false
+      filename_patterns: ['*.npy']
+  sample_data:
+    - command: filament-toolbox.make_sample_data
+      display_name: Filament Toolbox
+      key: unique_id.1
+  widgets:
+    - command: filament-toolbox.make_container_widget
+      display_name: Container Threshold
+    - command: filament-toolbox.make_magic_widget
+      display_name: Magic Threshold
+    - command: filament-toolbox.make_function_widget
+      autogenerate: true
+      display_name: Autogenerate Threshold
+    - command: filament-toolbox.make_qwidget
+      display_name: Example QWidget
