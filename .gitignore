@@ -1,10 +1,7 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
-<<<<<<< HEAD
 *.py[codz]
-=======
 *.py[cod]
->>>>>>> 97c6f22 (initial commit)
 *$py.class
 
 # C extensions
@@ -12,33 +9,26 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-<<<<<<< HEAD
-=======
+
 env/
->>>>>>> 97c6f22 (initial commit)
 build/
 develop-eggs/
 dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/
 var/
-<<<<<<< HEAD
 wheels/
 share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST
-=======
 *.egg-info/
 .installed.cfg
-*.egg
->>>>>>> 97c6f22 (initial commit)
+
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -53,26 +43,20 @@ pip-delete-this-directory.txt
 # Unit test / coverage reports
 htmlcov/
 .tox/
-<<<<<<< HEAD
 .nox/
-=======
->>>>>>> 97c6f22 (initial commit)
 .coverage
 .coverage.*
 .cache
 nosetests.xml
 coverage.xml
-<<<<<<< HEAD
 *.cover
 *.py.cover
 .hypothesis/
 .pytest_cache/
 cover/
-=======
 *,cover
 .hypothesis/
 .napari_cache
->>>>>>> 97c6f22 (initial commit)
 
 # Translations
 *.mo
@@ -81,7 +65,6 @@ cover/
 # Django stuff:
 *.log
 local_settings.py
-<<<<<<< HEAD
 db.sqlite3
 db.sqlite3-journal
 
@@ -91,22 +74,17 @@ instance/
 
 # Scrapy stuff:
 .scrapy
-=======
 
 # Flask instance folder
 instance/
->>>>>>> 97c6f22 (initial commit)
 
 # Sphinx documentation
 docs/_build/
 
-<<<<<<< HEAD
 # PyBuilder
 .pybuilder/
 target/
 
-# Jupyter Notebook
-.ipynb_checkpoints
 
 # IPython
 profile_default/
@@ -235,7 +213,7 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
-=======
+
 # MkDocs documentation
 /site/
 
@@ -258,4 +236,3 @@ venv/
 
 # written by setuptools_scm
 **/_version.py
->>>>>>> 97c6f22 (initial commit)

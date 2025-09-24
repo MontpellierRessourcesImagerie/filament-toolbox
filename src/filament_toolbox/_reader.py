@@ -7,6 +7,8 @@ https://napari.org/stable/plugins/building_a_plugin/guides.html#readers
 """
 
 import numpy as np
+from filament_toolbox.lib.swc import SWCForest
+
 
 
 def napari_get_reader(path):
@@ -30,7 +32,7 @@ def napari_get_reader(path):
         path = path[0]
 
     # if we know we cannot read the file, we immediately return None.
-    if not path.endswith(".npy"):
+    if not path.endswith(".swc"):
         return None
 
     # otherwise we return the *function* that can read ``path``.
@@ -62,12 +64,8 @@ def reader_function(path):
     # handle both a string and a list of strings
     paths = [path] if isinstance(path, str) else path
     # load all files into array
-    arrays = [np.load(_path) for _path in paths]
-    # stack arrays into single array
-    data = np.squeeze(np.stack(arrays))
-
+    forest = SWCForest.read_from(paths)
     # optional kwargs for the corresponding viewer.add_* method
     add_kwargs = {}
-
-    layer_type = "image"  # optional, default is "image"
-    return [(data, add_kwargs, layer_type)]
+    layer_type = "shapes"  # optional, default is "image"
+    return [(forest.data, add_kwargs, layer_type)]
