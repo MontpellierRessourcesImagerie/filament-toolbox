@@ -27,7 +27,7 @@ contributions:
   readers:
     - command: filament-toolbox.get_reader
       accepts_directories: false
-      filename_patterns: ['*.npy']
+      filename_patterns: ['*.swc']
   sample_data:
     - command: filament-toolbox.make_sample_data
       display_name: Filament Toolbox
