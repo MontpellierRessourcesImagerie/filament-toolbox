@@ -33,7 +33,7 @@ dependencies = [
     "magicgui",
     "qtpy",
     "scikit-image",
-    "cajal"
+    "skan",
 ]
 
 [project.optional-dependencies]

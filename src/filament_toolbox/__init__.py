@@ -11,10 +11,12 @@ from ._widget import (
     ImageThreshold,
     threshold_autogenerate_widget,
     threshold_magic_widget,
+    MedianFilterWidget
 )
 
 __all__ = (
     "napari_get_reader",
+    "MedianFilterWidget",
     "make_sample_data",
     "ExampleQWidget",
     "ImageThreshold",

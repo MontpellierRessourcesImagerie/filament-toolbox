@@ -7,6 +7,8 @@ https://napari.org/stable/plugins/building_a_plugin/guides.html#readers
 """
 
 import numpy as np
+from vispy.util.transforms import scale
+
 from filament_toolbox.lib.swc import SWCForest
 
 
@@ -63,9 +65,9 @@ def reader_function(path):
     """
     # handle both a string and a list of strings
     paths = [path] if isinstance(path, str) else path
-    # load all files into array
     forest = SWCForest.read_from(paths)
-    # optional kwargs for the corresponding viewer.add_* method
-    add_kwargs = {}
-    layer_type = "shapes"  # optional, default is "image"
-    return [(forest.data, add_kwargs, layer_type)]
+    skeleton = forest.get_skeleton()
+    shapes_name = forest.name+"_skel_shapes"
+    labels_name = forest.name+"_skel_labels"
+    return [(forest.data, {'scale': forest.scale, 'shape_type': 'line', 'name': shapes_name}, "shapes"),
+            (skeleton.path_label_image(), {'scale': forest.scale, 'name': labels_name}, "labels")]

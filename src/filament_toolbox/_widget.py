@@ -127,3 +127,19 @@ class ExampleQWidget(QWidget):
 
     def _on_click(self):
         print("napari has", len(self.viewer.layers), "layers")
+
+
+class MedianFilterWidget(QWidget):
+
+
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__()
+        self.viewer = viewer
+        self.create_layout()
+
+
+    def create_layout(self):
+        btn = QPushButton("Click me!")
+
+        self.setLayout(QHBoxLayout())
+        self.layout().addWidget(btn)
