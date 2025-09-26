@@ -12,33 +12,31 @@ contributions:
     - id: filament-toolbox.make_sample_data
       python_name: filament_toolbox._sample_data:make_sample_data
       title: Load sample data from Filament Toolbox
-    - id: filament-toolbox.make_container_widget
-      python_name: filament_toolbox:ImageThreshold
-      title: Make threshold Container widget
-    - id: filament-toolbox.make_magic_widget
-      python_name: filament_toolbox:threshold_magic_widget
-      title: Make threshold magic widget
-    - id: filament-toolbox.make_function_widget
-      python_name: filament_toolbox:threshold_autogenerate_widget
-      title: Make threshold function widget
-    - id: filament-toolbox.make_qwidget
-      python_name: filament_toolbox:ExampleQWidget
-      title: Make example QWidget
+    - id: filament-toolbox.gaussian_filter
+      python_name: filament_toolbox:GaussianFilterWidget
+      title: Gaussian Filter
+    - id: filament-toolbox.median_filter
+      python_name: filament_toolbox:MedianFilterWidget
+      title: Median Filter
   readers:
     - command: filament-toolbox.get_reader
       accepts_directories: false
-      filename_patterns: ['*.swc']
+      filename_patterns: ['*.swc', '*.SWC']
   sample_data:
     - command: filament-toolbox.make_sample_data
       display_name: Filament Toolbox
       key: unique_id.1
   widgets:
-    - command: filament-toolbox.make_container_widget
-      display_name: Container Threshold
-    - command: filament-toolbox.make_magic_widget
-      display_name: Magic Threshold
-    - command: filament-toolbox.make_function_widget
-      autogenerate: true
-      display_name: Autogenerate Threshold
-    - command: filament-toolbox.make_qwidget
-      display_name: Example QWidget
+    - command: filament-toolbox.gaussian_filter
+      display_name: Gaussian Filter
+    - command: filament-toolbox.median_filter
+      display_name: Median Filter
+  menus:
+    napari/layers/filter:
+      - submenu: noise
+    noise:
+      - command: filament-toolbox.gaussian_filter
+      - command: filament-toolbox.median_filter
+  submenus:
+    - id: noise
+      label: Noise
