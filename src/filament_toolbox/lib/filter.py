@@ -1,7 +1,11 @@
+import os
 from abc import abstractmethod
 from scipy.ndimage import median_filter
 from scipy.ndimage import gaussian_filter
+from skimage.restoration import rolling_ball
+from skimage.filters.ridges import frangi, sato, meijering
 from filament_toolbox.lib.ext.fastaniso import anisodiff, anisodiff3
+
 
 
 class Filter(object):
@@ -15,7 +19,7 @@ class Filter(object):
 
     @abstractmethod
     def run(self):
-        raise Exception("Abstract method of class Filter called!")
+        raise Exception("Abstract method run of class Filter called!")
 
 
 
@@ -103,3 +107,83 @@ class AnisotropicDiffusionFilter(Filter):
                       step=self.get_step(),
                       option=self.option)
 
+
+
+class RollingBall(Filter):
+
+
+    def __init__(self, input_image):
+        super().__init__(input_image)
+        self.radius = 25
+
+
+    def run(self):
+        self.result = self.image - rolling_ball(self.image,
+                                                radius=self.radius)
+
+
+class RidgeFilter(Filter):
+
+
+    def __init__(self, input_image):
+        super().__init__(input_image)
+        self.sigmas = [1, 3]
+        self.black_ridges = False
+
+
+    @abstractmethod
+    def run(self):
+        raise Exception("Abstract method run of class RidgeFilter called!")
+
+
+
+class FrangiFilter(RidgeFilter):
+
+
+    def __init__(self, input_image):
+        super().__init__(input_image)
+        self.alpha = 0.5
+        self.beta = 0.5
+        self.gamma = None
+
+
+    def run(self):
+        self.result = frangi(self.image,
+                             sigmas=self.sigmas,
+                             alpha=self.alpha,
+                             beta=self.beta,
+                             gamma=self.gamma,
+                             black_ridges=self.black_ridges,
+                             mode=self.mode)
+
+
+
+class SatoFilter(RidgeFilter):
+
+
+    def __init__(self, input_image):
+        super().__init__(input_image)
+
+
+    def run(self):
+        self.result = sato(self.image,
+                             sigmas=self.sigmas,
+                             black_ridges=self.black_ridges,
+                             mode=self.mode)
+
+
+
+class MeijeringFilter(RidgeFilter):
+
+
+    def __init__(self, input_image):
+        super().__init__(input_image)
+        self.alpha = None
+
+
+    def run(self):
+        self.result = meijering(self.image,
+                           sigmas=self.sigmas,
+                           alpha=self.alpha,
+                           black_ridges=self.black_ridges,
+                           mode=self.mode)

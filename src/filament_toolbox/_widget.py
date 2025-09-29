@@ -3,18 +3,35 @@ This module contains the tools of the filament-toolbox
 """
 
 from typing import TYPE_CHECKING
+
+from PIL.ImageColor import colormap
+from napari.layers import Image
 from qtpy.QtWidgets import QPushButton, QWidget
 from qtpy.QtWidgets import QVBoxLayout, QHBoxLayout
+from qtpy.QtWidgets import QSlider, QCheckBox
+from qtpy.QtCore import Qt
 import skimage.morphology
 from napari.utils.events import Event
 from napari.qt.threading import create_worker
 from filament_toolbox.lib.qtutil import WidgetTool
 from filament_toolbox.lib.napari_util import NapariUtil
-from filament_toolbox.lib.filter import MedianFilter, GaussianFilter
+from filament_toolbox.lib.filter import MedianFilter, GaussianFilter, AnisotropicDiffusionFilter, RollingBall
+from filament_toolbox.lib.filter import FrangiFilter, SatoFilter, MeijeringFilter
+from filament_toolbox.lib.segmentation import Threshold
+
 
 if TYPE_CHECKING:
     import napari
 
+
+def str_to_number(s):
+    try:
+        return int(s)
+    except ValueError:
+        try:
+            return float(s)
+        except ValueError:
+            return None
 
 
 class ToolboxWidget(QWidget):
@@ -51,7 +68,7 @@ class ToolboxWidget(QWidget):
             WidgetTool.replaceItemsInComboBox(combo_box, image_layers)
 
 
-
+# noinspection PyTypeChecker
 class MedianFilterWidget(ToolboxWidget):
 
 
@@ -167,6 +184,7 @@ class MedianFilterWidget(ToolboxWidget):
         )
 
 
+# noinspection PyTypeChecker
 class GaussianFilterWidget(ToolboxWidget):
 
 
@@ -267,12 +285,12 @@ class AnisotropicDiffusionFilterWidget(ToolboxWidget):
         self.step_xy = 1.
         self.step_z = 1.
         self.option = 1
-        self.sigma_iterations_input = None
+        self.iterations_input = None
         self.kappa_input = None
         self.gamma_input = None
         self.step_xy_input = None
         self.step_z_input = None
-        self.options = ["favour high contrast edges", " favour wide regions "]
+        self.options = ["favour high contrast edges", "favour wide regions"]
         self.options_combo_box = None
         self.create_layout()
         self.image_combo_boxes.append(self.input_layer_combo_box)
@@ -280,71 +298,651 @@ class AnisotropicDiffusionFilterWidget(ToolboxWidget):
 
     def create_layout(self):
         main_layout = QVBoxLayout()
-        """input_layer_label, self.input_layer_combo_box = WidgetTool.getComboInput(self, "image:",
+        input_layer_label, self.input_layer_combo_box = WidgetTool.getComboInput(self, "image:",
                                                                                  self.imageLayers,
                                                                                  )
-        sigma_xy_label, self.sigma_xy_input = WidgetTool.getLineInput(self, "sigma xy:",
-                                                            self.sigma_xy,
+        iterations_label, self.iterations_input = WidgetTool.getLineInput(self, "iterations:",
+                                                            self.iterations,
                                                             self.field_width,
-                                                            self.sigma_changed)
-        sigma_z_label, self.sigma_z_input = WidgetTool.getLineInput(self, "sigma z:",
-                                                                   self.sigma_z,
-                                                                   self.field_width,
-                                                                   self.sigma_changed)
-        mode_label, self.mode_combo_box = WidgetTool.getComboInput(self, "mode:",
-                                                                                 self.modes,
+                                                            self.iterations_changed)
+        kappa_label, self.kappa_input = WidgetTool.getLineInput(self, "kappa:",
+                                                            self.kappa,
+                                                            self.field_width,
+                                                            self.kappa_changed)
+        gamma_label, self.gamma_input = WidgetTool.getLineInput(self, "gamma:",
+                                                          self.gamma,
+                                                          self.field_width,
+                                                          self.gamma_changed)
+        step_xy_label, self.step_xy_input = WidgetTool.getLineInput(self, "step xy:",
+                                                          self.step_xy,
+                                                          self.field_width,
+                                                          self.step_changed)
+        step_z_label, self.step_z_input = WidgetTool.getLineInput(self, "step z:",
+                                                                    self.step_z,
+                                                                    self.field_width,
+                                                                    self.step_changed)
+        option_label, self.options_combo_box = WidgetTool.getComboInput(self, "equation:",
+                                                                                 self.options,
                                                                                  )
         apply_button = QPushButton("&Apply")
         apply_button.clicked.connect(self.on_apply_button_clicked)
         layer_layout = QHBoxLayout()
-        size_layout = QHBoxLayout()
-        mode_layout = QHBoxLayout()
+        iterations_layout = QHBoxLayout()
+        kappa_gamma_layout = QHBoxLayout()
+        step_layout = QHBoxLayout()
+        option_layout = QHBoxLayout()
         button_layout = QHBoxLayout()
 
         layer_layout.addWidget(input_layer_label)
         layer_layout.addWidget(self.input_layer_combo_box)
-        size_layout.addWidget(sigma_xy_label)
-        size_layout.addWidget(self.sigma_xy_input)
-        size_layout.addWidget(sigma_z_label)
-        size_layout.addWidget(self.sigma_z_input)
-        mode_layout.addWidget(mode_label)
-        mode_layout.addWidget(self.mode_combo_box)
+        iterations_layout.addWidget(iterations_label)
+        iterations_layout.addWidget(self.iterations_input)
+        kappa_gamma_layout.addWidget(kappa_label)
+        kappa_gamma_layout.addWidget(self.kappa_input)
+        kappa_gamma_layout.addWidget(gamma_label)
+        kappa_gamma_layout.addWidget(self.gamma_input)
+        step_layout.addWidget(step_xy_label)
+        step_layout.addWidget(self.step_xy_input)
+        step_layout.addWidget(step_z_label)
+        step_layout.addWidget(self.step_z_input)
+        option_layout.addWidget(option_label)
+        option_layout.addWidget(self.options_combo_box)
         button_layout.addWidget(apply_button)
 
         main_layout.addLayout(layer_layout)
-        main_layout.addLayout(size_layout)
-        main_layout.addLayout(mode_layout)
+        main_layout.addLayout(iterations_layout)
+        main_layout.addLayout(kappa_gamma_layout)
+        main_layout.addLayout(step_layout)
+        main_layout.addLayout(option_layout)
         main_layout.addLayout(button_layout)
 
         self.setLayout(main_layout)
 
 
-    def sigma_changed(self):
+    def iterations_changed(self):
+        pass
+
+
+    def kappa_changed(self):
+        pass
+
+
+    def gamma_changed(self):
+        pass
+
+
+    def step_changed(self):
         pass
 
 
     def on_apply_button_clicked(self):
         text = self.input_layer_combo_box.currentText()
         self.input_layer = self.napari_util.getLayerWithName(text)
-        sigma_xy = float(self.sigma_xy_input.text().strip())
-        sigma_z = float(self.sigma_z_input.text().strip())
-        mode = self.mode_combo_box.currentText()
-        self.filter = GaussianFilter(self.input_layer.data)
-        self.filter.sigma = (sigma_z, sigma_xy, sigma_xy)
-        self.filter.mode = mode
+        iterations = int(self.iterations_input.text().strip())
+        kappa = float(self.kappa_input.text().strip())
+        gamma = float(self.gamma_input.text().strip())
+        step_xy = float(self.step_xy_input.text().strip())
+        step_z = float(self.step_z_input.text().strip())
+        option = self.options_combo_box.currentIndex() + 1
+        self.filter = AnisotropicDiffusionFilter(self.input_layer.data)
+        self.filter.iterations = iterations
+        self.filter.kappa = kappa
+        self.filter.gamma = gamma
+        self.filter.step = (step_z, step_xy, step_xy)
+        self.filter.option = option
         worker = create_worker(self.filter.run,
-                               _progress={'desc': 'Applying median filter...'}
+                               _progress={'desc': 'Applying anisotropic diffusion filter...'}
                                )
         worker.finished.connect(self.on_filter_finished)
         worker.start()
 
 
     def on_filter_finished(self):
-        name = self.input_layer.name + " gaussian"
+        name = self.input_layer.name + " anisodiff"
         self.viewer.add_image(
             self.filter.result,
             name=name,
             scale=self.input_layer.scale,
             units=self.input_layer.units,
             blending='additive'
-        )"""
+        )
+
+
+
+class RollingBallWidget(ToolboxWidget):
+
+
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer)
+        self.radius = 50
+        self.radius_input = None
+        self.create_layout()
+        self.image_combo_boxes.append(self.input_layer_combo_box)
+
+
+    def create_layout(self):
+        main_layout = QVBoxLayout()
+        input_layer_label, self.input_layer_combo_box = WidgetTool.getComboInput(self, "image:",
+                                                                                 self.imageLayers,
+                                                                                 )
+        radius_label, self.radius_input = WidgetTool.getLineInput(self, "radius:",
+                                                            self.radius,
+                                                            self.field_width,
+                                                            self.radius_changed)
+        apply_button = QPushButton("&Apply")
+        apply_button.clicked.connect(self.on_apply_button_clicked)
+        layer_layout = QHBoxLayout()
+        radius_layout = QHBoxLayout()
+        button_layout = QHBoxLayout()
+
+        layer_layout.addWidget(input_layer_label)
+        layer_layout.addWidget(self.input_layer_combo_box)
+        radius_layout.addWidget(radius_label)
+        radius_layout.addWidget(self.radius_input)
+        button_layout.addWidget(apply_button)
+
+        main_layout.addLayout(layer_layout)
+        main_layout.addLayout(radius_layout)
+        main_layout.addLayout(button_layout)
+
+        self.setLayout(main_layout)
+
+
+    def radius_changed(self):
+        pass
+
+
+    def on_apply_button_clicked(self):
+        text = self.input_layer_combo_box.currentText()
+        self.input_layer = self.napari_util.getLayerWithName(text)
+        radius = int(self.radius_input.text().strip())
+        self.filter = RollingBall(self.input_layer.data)
+        self.filter.radius = radius
+        worker = create_worker(self.filter.run,
+                               _progress={'desc': 'Applying background subtraction...'}
+                               )
+        worker.finished.connect(self.on_filter_finished)
+        worker.start()
+
+
+    def on_filter_finished(self):
+        name = self.input_layer.name + " background"
+        self.viewer.add_image(
+            self.filter.result,
+            name=name,
+            scale=self.input_layer.scale,
+            units=self.input_layer.units,
+            blending='additive'
+        )
+        
+
+
+class ThresholdWidget(ToolboxWidget):
+    
+    
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer)
+        self.min_value = 0
+        self.max_value = 255
+        self.min_value_slider = None
+        self.max_value_slider = None
+        self.min_value_input = None
+        self.max_value_input = None
+        self.original_cmap = None
+        self.original_blending = None
+        self.current_layer = None
+        self.create_layout()
+        self.image_combo_boxes.append(self.input_layer_combo_box)
+        self.update_current_layer()
+
+
+    def create_layout(self):
+        main_layout = QVBoxLayout()
+        input_layer_label, self.input_layer_combo_box = WidgetTool.getComboInput(self, "image:",
+                                                                                 self.imageLayers,
+                                                                                 )
+        self.input_layer_combo_box.currentIndexChanged.connect(self.update_current_layer)
+        self.min_value_slider = QSlider(Qt.Horizontal)
+        self.min_value_slider.valueChanged.connect(self.min_threshold_changed)
+        min_value_label, self.min_value_input = WidgetTool.getLineInput(self, "min.:",
+                                                                        self.min_value,
+                                                                        self.field_width,
+                                                                        self.min_value_input_changed
+                                                                        )
+        self.min_value_input.textChanged.connect(self.min_value_input_changed)
+        self.max_value_slider = QSlider(Qt.Horizontal)
+        self.max_value_slider.valueChanged.connect(self.max_threshold_changed)
+        max_value_label, self.max_value_input = WidgetTool.getLineInput(self, "max.:",
+                                                                        self.max_value,
+                                                                        self.field_width,
+                                                                        self.max_value_input_changed
+                                                                        )
+
+        apply_button = QPushButton("&Apply")
+        apply_button.clicked.connect(self.on_apply_button_clicked)
+        layer_layout = QHBoxLayout()
+        min_layout = QHBoxLayout()
+        max_layout = QHBoxLayout()
+        button_layout = QHBoxLayout()
+
+        layer_layout.addWidget(input_layer_label)
+        layer_layout.addWidget(self.input_layer_combo_box)
+        min_layout.addWidget(min_value_label)
+        min_layout.addWidget(self.min_value_slider)
+        min_layout.addWidget(self.min_value_input)
+        max_layout.addWidget(max_value_label)
+        max_layout.addWidget(self.max_value_slider)
+        max_layout.addWidget(self.max_value_input)
+        button_layout.addWidget(apply_button)
+
+        main_layout.addLayout(layer_layout)
+        main_layout.addLayout(min_layout)
+        main_layout.addLayout(max_layout)
+        main_layout.addLayout(button_layout)
+        self.setLayout(main_layout)
+
+
+    def update_current_layer(self):
+        print("update current layer")
+        new_layer = self.napari_util.getLayerWithName(self.input_layer_combo_box.currentText())
+        if not new_layer or not isinstance(new_layer, Image) or new_layer is self.current_layer:
+            return
+        if self.current_layer:
+            self.current_layer.colormap = self.original_cmap
+            self.current_layer.blending = self.original_blending
+        self.current_layer = new_layer
+        self.original_cmap = new_layer.colormap
+        self.original_blending = new_layer.blending
+        new_layer.colormap = 'HiLo'
+        new_layer.blending = "additive"
+        sliders_min = int(round(new_layer.contrast_limits_range[0]))
+        sliders_max = int(round(new_layer.contrast_limits_range[1]))
+        self.min_value_slider.setMinimum(sliders_min)
+        self.min_value_slider.setMaximum(sliders_max)
+        self.min_value_slider.setValue(sliders_min)
+        self.max_value_slider.setMinimum(sliders_min)
+        self.max_value_slider.setMaximum(sliders_max)
+        self.max_value_slider.setValue(sliders_max)
+
+
+    def min_threshold_changed(self, value):
+        new_value = value
+        max_threshold_value = self.max_value_slider.value()
+        max_threshold_limit = self.max_value_slider.maximum()
+        if value >= max_threshold_value and max_threshold_value < max_threshold_limit:
+            self.max_value_slider.setValue(value + 1)
+        if value >= max_threshold_value == max_threshold_limit:
+            new_value = value - 1
+        self.current_layer.contrast_limits = [new_value, max_threshold_value]
+        self.min_value_input.setText(str(new_value))
+
+
+    def max_threshold_changed(self, value):
+        new_value = value
+        min_threshold_value = self.min_value_slider.value()
+        min_threshold_limit = self.max_value_slider.minimum()
+        if value <= min_threshold_value and min_threshold_value > min_threshold_limit:
+            self.min_value_slider.setValue(value - 1)
+        if value <= min_threshold_value == min_threshold_limit:
+            new_value = value + 1
+        self.current_layer.contrast_limits = [min_threshold_value, new_value]
+        self.max_value_input.setText(str(new_value))
+
+
+    def min_value_input_changed(self, value):
+        number = str_to_number(value)
+        self.min_value_slider.setValue(number)
+
+
+    def max_value_input_changed(self, value):
+        number = str_to_number(value)
+        self.max_value_slider.setValue(number)
+
+
+    def on_apply_button_clicked(self):
+        self.input_layer = self.current_layer
+        self.filter = Threshold(self.current_layer.data)
+        self.filter.min_value = self.min_value_slider.value()
+        self.filter.max_value = self.max_value_slider.value()
+        worker = create_worker(self.filter.run,
+                               _progress={'desc': 'Thresholding image...'}
+                               )
+        worker.finished.connect(self.on_operation_finished)
+        worker.start()
+
+
+    def on_operation_finished(self):
+        name = self.input_layer.name + " mask"
+        self.viewer.add_labels(
+            self.filter.result,
+            name=name,
+            scale=self.input_layer.scale,
+            units=self.input_layer.units,
+            blending='additive'
+        )
+
+
+class EdgeFilterWidget(ToolboxWidget):
+
+
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer)
+        self.sigmas = [1, 3]
+        self.black_ridges = False
+        self.sigmas_input = None
+        self.black_ridges_checkbox = None
+
+
+    def get_sigmas_as_text(self):
+        return ','.join([str(sigma) for sigma in self.sigmas])
+
+
+
+class FrangiFilterWidget(EdgeFilterWidget):
+
+
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer)
+        self.alpha = 0.5
+        self.beta = 0.5
+        self.gamma = None
+        self.alpha_input = None
+        self.beta_input = None
+        self.gamma_input = None
+        self.create_layout()
+        self.image_combo_boxes.append(self.input_layer_combo_box)
+
+
+    def create_layout(self):
+        main_layout = QVBoxLayout()
+        input_layer_label, self.input_layer_combo_box = WidgetTool.getComboInput(self, "image:",
+                                                                                 self.imageLayers,
+                                                                                 )
+        sigmas_label, self.sigmas_input = WidgetTool.getLineInput(self, "sigmas:",
+                                                                                  self.get_sigmas_as_text(),
+                                                                                  self.field_width,
+                                                                                  self.sigmas_changed)
+        alpha_label, self.alpha_input = WidgetTool.getLineInput(self, "alpha:",
+                                                                                  self.alpha,
+                                                                                  self.field_width,
+                                                                                  self.alpha_changed)
+        beta_label, self.beta_input = WidgetTool.getLineInput(self, "beta:",
+                                                               self.beta,
+                                                               self.field_width,
+                                                               self.beta_changed)
+        gamma_label, self.gamma_input = WidgetTool.getLineInput(self, "gamma:",
+                                                             self.gamma,
+                                                             self.field_width,
+                                                             self.gamma_changed)
+        self.black_ridges_checkbox = QCheckBox("black ridges")
+        mode_label, self.mode_combo_box = WidgetTool.getComboInput(self, "mode:",
+                                                                                 self.modes,
+                                                                                 )
+        apply_button = QPushButton("&Apply")
+        apply_button.clicked.connect(self.on_apply_button_clicked)
+        layer_layout = QHBoxLayout()
+        sigma_layout = QHBoxLayout()
+        abc_layout = QHBoxLayout()
+        black_ridges_layout = QHBoxLayout()
+        mode_layout = QHBoxLayout()
+        button_layout = QHBoxLayout()
+
+        layer_layout.addWidget(input_layer_label)
+        layer_layout.addWidget(self.input_layer_combo_box)
+        sigma_layout.addWidget(sigmas_label)
+        sigma_layout.addWidget(self.sigmas_input)
+        abc_layout.addWidget(alpha_label)
+        abc_layout.addWidget(self.alpha_input)
+        abc_layout.addWidget(beta_label)
+        abc_layout.addWidget(self.beta_input)
+        abc_layout.addWidget(gamma_label)
+        abc_layout.addWidget(self.gamma_input)
+        black_ridges_layout.addWidget(self.black_ridges_checkbox)
+        mode_layout.addWidget(mode_label)
+        mode_layout.addWidget(self.mode_combo_box)
+        button_layout.addWidget(apply_button)
+
+        main_layout.addLayout(layer_layout)
+        main_layout.addLayout(sigma_layout)
+        main_layout.addLayout(abc_layout)
+        main_layout.addLayout(black_ridges_layout)
+        main_layout.addLayout(mode_layout)
+        main_layout.addLayout(button_layout)
+
+        self.setLayout(main_layout)
+
+
+    def sigmas_changed(self, value):
+        self.sigmas = value.strip().split(",")
+        self.sigmas = [float(sigma.strip()) for sigma in self.sigmas]
+
+
+    def alpha_changed(self):
+        pass
+
+
+    def beta_changed(self):
+        pass
+
+
+    def gamma_changed(self):
+        pass
+
+
+    def on_apply_button_clicked(self):
+        text = self.input_layer_combo_box.currentText()
+        self.input_layer = self.napari_util.getLayerWithName(text)
+        alpha = float(self.alpha_input.text().strip())
+        beta = float(self.beta_input.text().strip())
+        gamma_text = self.gamma_input.text().strip()
+        gamma = None
+        if not gamma_text in ['NONE', "None", "none"]:
+            gamma = float(gamma_text)
+        black_ridges = self.black_ridges_checkbox.isChecked()
+        mode = self.mode_combo_box.currentText()
+        self.filter = FrangiFilter(self.input_layer.data)
+        self.filter.sigmas = self.sigmas
+        self.filter.alpha = alpha
+        self.filter.beta = beta
+        self.filter.gamma = gamma
+        self.filter.black_ridges = black_ridges
+        self.filter.mode = mode
+        worker = create_worker(self.filter.run,
+                               _progress={'desc': 'Applying Frangi Filter...'}
+                               )
+        worker.finished.connect(self.on_filter_finished)
+        worker.start()
+
+
+    def on_filter_finished(self):
+        name = self.input_layer.name + " frangi"
+        self.viewer.add_image(
+            self.filter.result,
+            name=name,
+            scale=self.input_layer.scale,
+            units=self.input_layer.units,
+            blending='additive',
+            colormap='inferno'
+        )
+
+
+
+class SatoFilterWidget(EdgeFilterWidget):
+
+
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer)
+        self.create_layout()
+        self.image_combo_boxes.append(self.input_layer_combo_box)
+
+
+    def create_layout(self):
+        main_layout = QVBoxLayout()
+        input_layer_label, self.input_layer_combo_box = WidgetTool.getComboInput(self, "image:",
+                                                                                 self.imageLayers,
+                                                                                 )
+        sigmas_label, self.sigmas_input = WidgetTool.getLineInput(self, "sigmas:",
+                                                                                  self.get_sigmas_as_text(),
+                                                                                  self.field_width,
+                                                                                  self.sigmas_changed)
+        self.black_ridges_checkbox = QCheckBox("black ridges")
+        mode_label, self.mode_combo_box = WidgetTool.getComboInput(self, "mode:",
+                                                                                 self.modes,
+                                                                                 )
+        apply_button = QPushButton("&Apply")
+        apply_button.clicked.connect(self.on_apply_button_clicked)
+        layer_layout = QHBoxLayout()
+        sigma_layout = QHBoxLayout()
+        black_ridges_layout = QHBoxLayout()
+        mode_layout = QHBoxLayout()
+        button_layout = QHBoxLayout()
+
+        layer_layout.addWidget(input_layer_label)
+        layer_layout.addWidget(self.input_layer_combo_box)
+        sigma_layout.addWidget(sigmas_label)
+        sigma_layout.addWidget(self.sigmas_input)
+        black_ridges_layout.addWidget(self.black_ridges_checkbox)
+        mode_layout.addWidget(mode_label)
+        mode_layout.addWidget(self.mode_combo_box)
+        button_layout.addWidget(apply_button)
+
+        main_layout.addLayout(layer_layout)
+        main_layout.addLayout(sigma_layout)
+        main_layout.addLayout(black_ridges_layout)
+        main_layout.addLayout(mode_layout)
+        main_layout.addLayout(button_layout)
+
+        self.setLayout(main_layout)
+
+
+    def sigmas_changed(self, value):
+        self.sigmas = value.strip().split(",")
+        self.sigmas = [float(sigma.strip()) for sigma in self.sigmas]
+
+
+    def on_apply_button_clicked(self):
+        text = self.input_layer_combo_box.currentText()
+        self.input_layer = self.napari_util.getLayerWithName(text)
+        black_ridges = self.black_ridges_checkbox.isChecked()
+        mode = self.mode_combo_box.currentText()
+        self.filter = SatoFilter(self.input_layer.data)
+        self.filter.sigmas = self.sigmas
+        self.filter.black_ridges = black_ridges
+        self.filter.mode = mode
+        worker = create_worker(self.filter.run,
+                               _progress={'desc': 'Applying Sato Filter...'}
+                               )
+        worker.finished.connect(self.on_filter_finished)
+        worker.start()
+
+
+    def on_filter_finished(self):
+        name = self.input_layer.name + " sato"
+        self.viewer.add_image(
+            self.filter.result,
+            name=name,
+            scale=self.input_layer.scale,
+            units=self.input_layer.units,
+            blending='additive',
+            colormap='inferno'
+        )
+
+
+class MeijeringFilterWidget(EdgeFilterWidget):
+
+
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer)
+        self.alpha = None
+        self.alpha_input = None
+        self.create_layout()
+        self.image_combo_boxes.append(self.input_layer_combo_box)
+
+
+    def create_layout(self):
+        main_layout = QVBoxLayout()
+        input_layer_label, self.input_layer_combo_box = WidgetTool.getComboInput(self, "image:",
+                                                                                 self.imageLayers,
+                                                                                 )
+        sigmas_label, self.sigmas_input = WidgetTool.getLineInput(self, "sigmas:",
+                                                                                  self.get_sigmas_as_text(),
+                                                                                  self.field_width,
+                                                                                  self.sigmas_changed)
+        alpha_label, self.alpha_input = WidgetTool.getLineInput(self, "alpha:",
+                                                                                  self.alpha,
+                                                                                  self.field_width,
+                                                                                  self.alpha_changed)
+        self.black_ridges_checkbox = QCheckBox("black ridges")
+        mode_label, self.mode_combo_box = WidgetTool.getComboInput(self, "mode:",
+                                                                                 self.modes,
+                                                                                 )
+        apply_button = QPushButton("&Apply")
+        apply_button.clicked.connect(self.on_apply_button_clicked)
+        layer_layout = QHBoxLayout()
+        sigma_layout = QHBoxLayout()
+        abc_layout = QHBoxLayout()
+        black_ridges_layout = QHBoxLayout()
+        mode_layout = QHBoxLayout()
+        button_layout = QHBoxLayout()
+
+        layer_layout.addWidget(input_layer_label)
+        layer_layout.addWidget(self.input_layer_combo_box)
+        sigma_layout.addWidget(sigmas_label)
+        sigma_layout.addWidget(self.sigmas_input)
+        abc_layout.addWidget(alpha_label)
+        abc_layout.addWidget(self.alpha_input)
+        black_ridges_layout.addWidget(self.black_ridges_checkbox)
+        mode_layout.addWidget(mode_label)
+        mode_layout.addWidget(self.mode_combo_box)
+        button_layout.addWidget(apply_button)
+
+        main_layout.addLayout(layer_layout)
+        main_layout.addLayout(sigma_layout)
+        main_layout.addLayout(abc_layout)
+        main_layout.addLayout(black_ridges_layout)
+        main_layout.addLayout(mode_layout)
+        main_layout.addLayout(button_layout)
+
+        self.setLayout(main_layout)
+
+
+    def sigmas_changed(self, value):
+        self.sigmas = value.strip().split(",")
+        self.sigmas = [float(sigma.strip()) for sigma in self.sigmas]
+
+
+    def alpha_changed(self):
+        pass
+
+
+    def on_apply_button_clicked(self):
+        text = self.input_layer_combo_box.currentText()
+        self.input_layer = self.napari_util.getLayerWithName(text)
+        alpha_text = self.alpha_input.text().strip()
+        alpha = None
+        if not alpha_text in ['NONE', "None", "none"]:
+            alpha = float(alpha_text)
+        black_ridges = self.black_ridges_checkbox.isChecked()
+        mode = self.mode_combo_box.currentText()
+        self.filter = MeijeringFilter(self.input_layer.data)
+        self.filter.sigmas = self.sigmas
+        self.filter.alpha = alpha
+        self.filter.black_ridges = black_ridges
+        self.filter.mode = mode
+        worker = create_worker(self.filter.run,
+                               _progress={'desc': 'Applying Meijering Filter...'}
+                               )
+        worker.finished.connect(self.on_filter_finished)
+        worker.start()
+
+
+    def on_filter_finished(self):
+        name = self.input_layer.name + " meijering"
+        self.viewer.add_image(
+            self.filter.result,
+            name=name,
+            scale=self.input_layer.scale,
+            units=self.input_layer.units,
+            blending='additive',
+            colormap='inferno'
+        )

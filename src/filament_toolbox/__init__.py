@@ -9,6 +9,12 @@ from ._sample_data import make_sample_data
 from ._widget import (
     MedianFilterWidget,
     GaussianFilterWidget,
+    AnisotropicDiffusionFilterWidget,
+    RollingBallWidget,
+    ThresholdWidget,
+    FrangiFilterWidget,
+    SatoFilterWidget,
+    MeijeringFilterWidget,
 )
 
 __all__ = (
@@ -16,4 +22,10 @@ __all__ = (
     "make_sample_data",
     "MedianFilterWidget",
     "MedianFilterWidget",
+    "AnisotropicDiffusionFilterWidget",
+    "RollingBallWidget",
+    "ThresholdWidget",
+    "FrangiFilterWidget",
+    "SatoFilterWidget",
+    "MeijeringFilterWidget",
 )

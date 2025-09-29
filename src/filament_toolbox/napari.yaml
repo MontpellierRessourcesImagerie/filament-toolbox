@@ -12,12 +12,30 @@ contributions:
     - id: filament-toolbox.make_sample_data
       python_name: filament_toolbox._sample_data:make_sample_data
       title: Load sample data from Filament Toolbox
+    - id: filament-toolbox.anisotropic_diffusion_filter
+      python_name: filament_toolbox:AnisotropicDiffusionFilterWidget
+      title: Anisotropic Diffusion
+    - id: filament-toolbox.frangi_filter
+      python_name: filament_toolbox:FrangiFilterWidget
+      title: Frangi Filter
     - id: filament-toolbox.gaussian_filter
       python_name: filament_toolbox:GaussianFilterWidget
       title: Gaussian Filter
     - id: filament-toolbox.median_filter
       python_name: filament_toolbox:MedianFilterWidget
       title: Median Filter
+    - id: filament-toolbox.meijering_filter
+      python_name: filament_toolbox:MeijeringFilterWidget
+      title: Meijering Filter
+    - id: filament-toolbox.rolling_ball
+      python_name: filament_toolbox:RollingBallWidget
+      title: Background Subtraction
+    - id: filament-toolbox.sato_filter
+      python_name: filament_toolbox:SatoFilterWidget
+      title: Sato Filter
+    - id: filament-toolbox.threshold
+      python_name: filament_toolbox:ThresholdWidget
+      title: Threshold
   readers:
     - command: filament-toolbox.get_reader
       accepts_directories: false
@@ -27,16 +45,47 @@ contributions:
       display_name: Filament Toolbox
       key: unique_id.1
   widgets:
+    - command: filament-toolbox.anisotropic_diffusion_filter
+      display_name: Anisotropic Diffusion
+    - command: filament-toolbox.rolling_ball
+      display_name: Background Subtraction
+    - command: filament-toolbox.frangi_filter
+      display_name: Frangi Filter
     - command: filament-toolbox.gaussian_filter
       display_name: Gaussian Filter
     - command: filament-toolbox.median_filter
       display_name: Median Filter
+    - command: filament-toolbox.meijering_filter
+      display_name: Meijering Filter
+    - command: filament-toolbox.sato_filter
+      display_name: Sato Filter
+    - command: filament-toolbox.threshold
+      display_name: Threshold
   menus:
     napari/layers/filter:
+      - submenu: background
       - submenu: noise
+      - submenu: ridge
+    background:
+      - command: filament-toolbox.rolling_ball
+    ridge:
+      - command: filament-toolbox.frangi_filter
+      - command: filament-toolbox.meijering_filter
+      - command: filament-toolbox.sato_filter
     noise:
+      - command: filament-toolbox.anisotropic_diffusion_filter
       - command: filament-toolbox.gaussian_filter
       - command: filament-toolbox.median_filter
+    napari/layers/segment:
+      - submenu: threshold
+    threshold:
+      - command: filament-toolbox.threshold
   submenus:
+    - id: background
+      label: Background
     - id: noise
       label: Noise
+    - id: ridge
+      label: Ridge
+    - id: threshold
+      label: Threshold
