@@ -4,13 +4,14 @@ This module contains the tools of the filament-toolbox
 
 from typing import TYPE_CHECKING
 
-from PIL.ImageColor import colormap
+import numpy as np
 from napari.layers import Image
 from qtpy.QtWidgets import QPushButton, QWidget
 from qtpy.QtWidgets import QVBoxLayout, QHBoxLayout
 from qtpy.QtWidgets import QSlider, QCheckBox
 from qtpy.QtCore import Qt
 import skimage.morphology
+from skimage.color import rgb2gray
 from napari.utils.events import Event
 from napari.qt.threading import create_worker
 from filament_toolbox.lib.qtutil import WidgetTool
@@ -18,10 +19,25 @@ from filament_toolbox.lib.napari_util import NapariUtil
 from filament_toolbox.lib.filter import MedianFilter, GaussianFilter, AnisotropicDiffusionFilter, RollingBall
 from filament_toolbox.lib.filter import FrangiFilter, SatoFilter, MeijeringFilter
 from filament_toolbox.lib.segmentation import Threshold
+from filament_toolbox.lib.morphology import Dilation
 
 
 if TYPE_CHECKING:
     import napari
+
+def rgb_to_8bit( viewer: "napari.viewer.Viewer"):
+    layer = viewer.layers.selection.active
+    name = layer.name + " 8bit"
+    converted = rgb2gray(layer.data)
+    converted = (converted * 255).astype(np.uint8)
+    viewer.add_image(
+        converted,
+        name=name,
+        scale=layer.scale,
+        units=layer.units,
+        blending='additive',
+        colormap='gray'
+    )
 
 
 def str_to_number(s):
@@ -42,9 +58,12 @@ class ToolboxWidget(QWidget):
         self.viewer = viewer
         self.field_width = 50
         self.napari_util = NapariUtil(self.viewer)
-        self.imageLayers = self.napari_util.getImageLayers()
+        self.image_layers = self.napari_util.getImageLayers()
+        self.label_layers = self.napari_util.getLabelLayers()
         self.image_combo_boxes = []
+        self.label_combo_boxes = []
         self.input_layer_combo_box = None
+        self.label_layer_combo_box = None
         self.footprints = ["none", "cube", "ball", "octahedron"]
         self.footprint = "cube"
         self.modes = ["reflect", "constant", "nearest", "mirror", "warp"]
@@ -64,8 +83,12 @@ class ToolboxWidget(QWidget):
 
     def update_layer_selection_combo_boxes(self):
         image_layers = self.napari_util.getImageLayers()
+        label_layers = self.napari_util.getLabelLayers()
         for combo_box in self.image_combo_boxes:
             WidgetTool.replaceItemsInComboBox(combo_box, image_layers)
+        for combo_box in self.label_combo_boxes:
+            WidgetTool.replaceItemsInComboBox(combo_box, label_layers)
+
 
 
 # noinspection PyTypeChecker
@@ -89,7 +112,7 @@ class MedianFilterWidget(ToolboxWidget):
 
         main_layout = QVBoxLayout()
         input_layer_label, self.input_layer_combo_box = WidgetTool.getComboInput(self, "image:",
-                                                                                 self.imageLayers,
+                                                                                 self.image_layers,
                                                                                  )
         median_size_xy_label, self.median_size_xy_input = WidgetTool.getLineInput(self, "size xy:",
                                                                    self.median_size_xy,
@@ -158,9 +181,11 @@ class MedianFilterWidget(ToolboxWidget):
         footprint_radius = int(self.footprint_radius_input.text().strip())
         if not footprint_text == "none":
             if footprint_text == "cube":
-                footprint_radius = 2 * footprint_radius + 1
-            footprint_function = getattr(skimage.morphology, footprint_text)
-            footprint = footprint_function(footprint_radius)
+                footprint_width = 2 * footprint_radius + 1
+                footprint = skimage.morphology.footprint_rectangle((footprint_width, footprint_width, footprint_width))
+            else:
+                footprint_function = getattr(skimage.morphology, footprint_text)
+                footprint = footprint_function(footprint_radius)
         mode = self.mode_combo_box.currentText()
         self.filter = MedianFilter(self.input_layer.data)
         self.filter.size = (size_z, size_xy, size_xy)
@@ -203,7 +228,7 @@ class GaussianFilterWidget(ToolboxWidget):
     def create_layout(self):
         main_layout = QVBoxLayout()
         input_layer_label, self.input_layer_combo_box = WidgetTool.getComboInput(self, "image:",
-                                                                                 self.imageLayers,
+                                                                                 self.image_layers,
                                                                                  )
         sigma_xy_label, self.sigma_xy_input = WidgetTool.getLineInput(self, "sigma xy:",
                                                             self.sigma_xy,
@@ -299,7 +324,7 @@ class AnisotropicDiffusionFilterWidget(ToolboxWidget):
     def create_layout(self):
         main_layout = QVBoxLayout()
         input_layer_label, self.input_layer_combo_box = WidgetTool.getComboInput(self, "image:",
-                                                                                 self.imageLayers,
+                                                                                 self.image_layers,
                                                                                  )
         iterations_label, self.iterations_input = WidgetTool.getLineInput(self, "iterations:",
                                                             self.iterations,
@@ -423,7 +448,7 @@ class RollingBallWidget(ToolboxWidget):
     def create_layout(self):
         main_layout = QVBoxLayout()
         input_layer_label, self.input_layer_combo_box = WidgetTool.getComboInput(self, "image:",
-                                                                                 self.imageLayers,
+                                                                                 self.image_layers,
                                                                                  )
         radius_label, self.radius_input = WidgetTool.getLineInput(self, "radius:",
                                                             self.radius,
@@ -499,7 +524,7 @@ class ThresholdWidget(ToolboxWidget):
     def create_layout(self):
         main_layout = QVBoxLayout()
         input_layer_label, self.input_layer_combo_box = WidgetTool.getComboInput(self, "image:",
-                                                                                 self.imageLayers,
+                                                                                 self.image_layers,
                                                                                  )
         self.input_layer_combo_box.currentIndexChanged.connect(self.update_current_layer)
         self.min_value_slider = QSlider(Qt.Horizontal)
@@ -656,7 +681,7 @@ class FrangiFilterWidget(EdgeFilterWidget):
     def create_layout(self):
         main_layout = QVBoxLayout()
         input_layer_label, self.input_layer_combo_box = WidgetTool.getComboInput(self, "image:",
-                                                                                 self.imageLayers,
+                                                                                 self.image_layers,
                                                                                  )
         sigmas_label, self.sigmas_input = WidgetTool.getLineInput(self, "sigmas:",
                                                                                   self.get_sigmas_as_text(),
@@ -779,7 +804,7 @@ class SatoFilterWidget(EdgeFilterWidget):
     def create_layout(self):
         main_layout = QVBoxLayout()
         input_layer_label, self.input_layer_combo_box = WidgetTool.getComboInput(self, "image:",
-                                                                                 self.imageLayers,
+                                                                                 self.image_layers,
                                                                                  )
         sigmas_label, self.sigmas_input = WidgetTool.getLineInput(self, "sigmas:",
                                                                                   self.get_sigmas_as_text(),
@@ -862,7 +887,7 @@ class MeijeringFilterWidget(EdgeFilterWidget):
     def create_layout(self):
         main_layout = QVBoxLayout()
         input_layer_label, self.input_layer_combo_box = WidgetTool.getComboInput(self, "image:",
-                                                                                 self.imageLayers,
+                                                                                 self.image_layers,
                                                                                  )
         sigmas_label, self.sigmas_input = WidgetTool.getLineInput(self, "sigmas:",
                                                                                   self.get_sigmas_as_text(),
@@ -945,4 +970,103 @@ class MeijeringFilterWidget(EdgeFilterWidget):
             units=self.input_layer.units,
             blending='additive',
             colormap='inferno'
+        )
+
+
+
+class DilationWidget(ToolboxWidget):
+
+
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer)
+        self.footprint_radius = 1
+        self.create_layout()
+        self.label_combo_boxes.append(self.label_layer_combo_box)
+
+
+    def get_footprints(self):
+        return self.footprints[1:]
+
+
+    def get_modes(self):
+        return ['ignore', 'min', 'max']
+
+
+    def create_layout(self):
+        main_layout = QVBoxLayout()
+        input_layer_label, self.label_layer_combo_box = WidgetTool.getComboInput(self, "image:",
+                                                                                 self.label_layers,
+                                                                                 )
+        footprint_label, self.footprint_combo_box = WidgetTool.getComboInput(self, "footprint:",
+                                                                             self.get_footprints(),
+                                                                             )
+        footprint_radius_label, self.footprint_radius_input = WidgetTool.getLineInput(self, "radius:",
+                                                                                      self.footprint_radius,
+                                                                                      self.field_width,
+                                                                                      self.footprint_radius_changed)
+        mode_label, self.mode_combo_box = WidgetTool.getComboInput(self, "mode:",
+                                                                   self.get_modes(),
+                                                                   )
+        apply_button = QPushButton("&Apply")
+        apply_button.clicked.connect(self.on_apply_button_clicked)
+        layer_layout = QHBoxLayout()
+        footprint_layout = QHBoxLayout()
+        mode_layout = QHBoxLayout()
+        button_layout = QHBoxLayout()
+
+        layer_layout.addWidget(input_layer_label)
+        layer_layout.addWidget(self.label_layer_combo_box)
+        footprint_layout.addWidget(footprint_label)
+        footprint_layout.addWidget(self.footprint_combo_box)
+        footprint_layout.addWidget(footprint_radius_label)
+        footprint_layout.addWidget(self.footprint_radius_input)
+        mode_layout.addWidget(mode_label)
+        mode_layout.addWidget(self.mode_combo_box)
+        button_layout.addWidget(apply_button)
+
+        main_layout.addLayout(layer_layout)
+        main_layout.addLayout(footprint_layout)
+        main_layout.addLayout(mode_layout)
+        main_layout.addLayout(button_layout)
+
+        self.setLayout(main_layout)
+
+
+    def footprint_radius_changed(self):
+        pass
+
+
+    def on_apply_button_clicked(self):
+        text = self.label_layer_combo_box.currentText()
+        print("dilation apply, text", text)
+        self.input_layer = self.napari_util.getLayerWithName(text)
+        print("dilation apply, self.input_layer type", type(self.input_layer))
+        footprint = None
+        footprint_text = self.footprint_combo_box.currentText()
+        footprint_radius = int(self.footprint_radius_input.text().strip())
+        if footprint_text == "cube":
+            footprint_width = 2 * footprint_radius + 1
+            footprint = skimage.morphology.footprint_rectangle((footprint_width, footprint_width, footprint_width))
+        else:
+            footprint_function = getattr(skimage.morphology, footprint_text)
+            footprint = footprint_function(footprint_radius)
+        mode = self.mode_combo_box.currentText()
+        self.filter = Dilation(self.input_layer.data)
+        self.filter.footprint = footprint
+        self.filter.mode = mode
+        worker = create_worker(self.filter.run,
+                               _progress={'desc': 'Applying dilation...'}
+                               )
+        worker.finished.connect(self.on_filter_finished)
+        worker.start()
+
+
+    def on_filter_finished(self):
+        name = self.input_layer.name + " dilation"
+        self.viewer.add_labels(
+            self.filter.result,
+            name=name,
+            scale=self.input_layer.scale,
+            units=self.input_layer.units,
+            blending='additive'
         )

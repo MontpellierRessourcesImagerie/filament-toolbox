@@ -15,6 +15,9 @@ contributions:
     - id: filament-toolbox.anisotropic_diffusion_filter
       python_name: filament_toolbox:AnisotropicDiffusionFilterWidget
       title: Anisotropic Diffusion
+    - id: filament-toolbox.dilate
+      python_name: filament_toolbox:DilationWidget
+      title: Dilate
     - id: filament-toolbox.frangi_filter
       python_name: filament_toolbox:FrangiFilterWidget
       title: Frangi Filter
@@ -27,6 +30,9 @@ contributions:
     - id: filament-toolbox.meijering_filter
       python_name: filament_toolbox:MeijeringFilterWidget
       title: Meijering Filter
+    - id: filament-toolbox.rgb_to_8bit
+      python_name: filament_toolbox:rgb_to_8bit
+      title: rgb to 8bit
     - id: filament-toolbox.rolling_ball
       python_name: filament_toolbox:RollingBallWidget
       title: Background Subtraction
@@ -49,6 +55,8 @@ contributions:
       display_name: Anisotropic Diffusion
     - command: filament-toolbox.rolling_ball
       display_name: Background Subtraction
+    - command: filament-toolbox.dilate
+      display_name: Dilate
     - command: filament-toolbox.frangi_filter
       display_name: Frangi Filter
     - command: filament-toolbox.gaussian_filter
@@ -64,6 +72,7 @@ contributions:
   menus:
     napari/layers/filter:
       - submenu: background
+      - submenu: morphology
       - submenu: noise
       - submenu: ridge
     background:
@@ -72,6 +81,8 @@ contributions:
       - command: filament-toolbox.frangi_filter
       - command: filament-toolbox.meijering_filter
       - command: filament-toolbox.sato_filter
+    morphology:
+      - command: filament-toolbox.dilate
     noise:
       - command: filament-toolbox.anisotropic_diffusion_filter
       - command: filament-toolbox.gaussian_filter
@@ -80,12 +91,20 @@ contributions:
       - submenu: threshold
     threshold:
       - command: filament-toolbox.threshold
+    napari/layers/data:
+      - submenu: convert
+    convert:
+      - command: filament-toolbox.rgb_to_8bit
   submenus:
     - id: background
       label: Background
+    - id: morphology
+      label: Morphology
     - id: noise
       label: Noise
     - id: ridge
       label: Ridge
     - id: threshold
       label: Threshold
+    - id: convert
+      label: Convert

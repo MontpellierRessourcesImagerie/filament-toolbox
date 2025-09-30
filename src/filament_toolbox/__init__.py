@@ -15,6 +15,8 @@ from ._widget import (
     FrangiFilterWidget,
     SatoFilterWidget,
     MeijeringFilterWidget,
+    DilationWidget,
+    rgb_to_8bit,
 )
 
 __all__ = (
@@ -28,4 +30,6 @@ __all__ = (
     "FrangiFilterWidget",
     "SatoFilterWidget",
     "MeijeringFilterWidget",
+    "DilationWidget",
+    "rgb_to_8bit",
 )
