@@ -1,11 +1,13 @@
 """
 This module contains the tools of the filament-toolbox
 """
-
+from codecs import namereplace_errors
 from typing import TYPE_CHECKING
 
 import numpy as np
-from napari.layers import Image
+import napari
+from napari.layers import Image, Labels
+from numba.core.types import uint16, uint32
 from qtpy.QtWidgets import QPushButton, QWidget
 from qtpy.QtWidgets import QVBoxLayout, QHBoxLayout
 from qtpy.QtWidgets import QSlider, QCheckBox
@@ -19,11 +21,15 @@ from filament_toolbox.lib.napari_util import NapariUtil
 from filament_toolbox.lib.filter import MedianFilter, GaussianFilter, AnisotropicDiffusionFilter, RollingBall
 from filament_toolbox.lib.filter import FrangiFilter, SatoFilter, MeijeringFilter
 from filament_toolbox.lib.segmentation import Threshold
-from filament_toolbox.lib.morphology import Dilation
-
+from filament_toolbox.lib.morphology import Dilation, Closing, Label
 
 if TYPE_CHECKING:
     import napari
+
+
+def activate():
+    print("Filament Toolbox activated")
+
 
 def rgb_to_8bit( viewer: "napari.viewer.Viewer"):
     layer = viewer.layers.selection.active
@@ -40,6 +46,23 @@ def rgb_to_8bit( viewer: "napari.viewer.Viewer"):
     )
 
 
+
+def rgb_to_16bit( viewer: "napari.viewer.Viewer"):
+    layer = viewer.layers.selection.active
+    name = layer.name + " 16bit"
+    converted = rgb2gray(layer.data)
+    converted = (converted * 65535).astype(np.uint16)
+    viewer.add_image(
+        converted,
+        name=name,
+        scale=layer.scale,
+        units=layer.units,
+        blending='additive',
+        colormap='gray'
+    )
+
+
+
 def str_to_number(s):
     try:
         return int(s)
@@ -48,6 +71,7 @@ def str_to_number(s):
             return float(s)
         except ValueError:
             return None
+
 
 
 class ToolboxWidget(QWidget):
@@ -568,7 +592,6 @@ class ThresholdWidget(ToolboxWidget):
 
 
     def update_current_layer(self):
-        print("update current layer")
         new_layer = self.napari_util.getLayerWithName(self.input_layer_combo_box.currentText())
         if not new_layer or not isinstance(new_layer, Image) or new_layer is self.current_layer:
             return
@@ -580,8 +603,12 @@ class ThresholdWidget(ToolboxWidget):
         self.original_blending = new_layer.blending
         new_layer.colormap = 'HiLo'
         new_layer.blending = "additive"
+
         sliders_min = int(round(new_layer.contrast_limits_range[0]))
         sliders_max = int(round(new_layer.contrast_limits_range[1]))
+        if new_layer.data.dtype in (np.uint8, np.uint16, uint32):
+            sliders_min = np.iinfo(new_layer.data.dtype).min
+            sliders_max = np.iinfo(new_layer.data.dtype).max
         self.min_value_slider.setMinimum(sliders_min)
         self.min_value_slider.setMaximum(sliders_max)
         self.min_value_slider.setValue(sliders_min)
@@ -1038,9 +1065,7 @@ class DilationWidget(ToolboxWidget):
 
     def on_apply_button_clicked(self):
         text = self.label_layer_combo_box.currentText()
-        print("dilation apply, text", text)
         self.input_layer = self.napari_util.getLayerWithName(text)
-        print("dilation apply, self.input_layer type", type(self.input_layer))
         footprint = None
         footprint_text = self.footprint_combo_box.currentText()
         footprint_radius = int(self.footprint_radius_input.text().strip())
@@ -1070,3 +1095,212 @@ class DilationWidget(ToolboxWidget):
             units=self.input_layer.units,
             blending='additive'
         )
+
+
+
+class ClosingWidget(ToolboxWidget):
+
+
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer)
+        self.footprint_radius = 1
+        self.create_layout()
+        self.label_combo_boxes.append(self.label_layer_combo_box)
+
+
+    def get_footprints(self):
+        return self.footprints[1:]
+
+
+    def get_modes(self):
+        return ['ignore', 'min', 'max']
+
+
+    def create_layout(self):
+        main_layout = QVBoxLayout()
+        input_layer_label, self.label_layer_combo_box = WidgetTool.getComboInput(self, "image:",
+                                                                                 self.label_layers,
+                                                                                 )
+        footprint_label, self.footprint_combo_box = WidgetTool.getComboInput(self, "footprint:",
+                                                                             self.get_footprints(),
+                                                                             )
+        footprint_radius_label, self.footprint_radius_input = WidgetTool.getLineInput(self, "radius:",
+                                                                                      self.footprint_radius,
+                                                                                      self.field_width,
+                                                                                      self.footprint_radius_changed)
+        mode_label, self.mode_combo_box = WidgetTool.getComboInput(self, "mode:",
+                                                                   self.get_modes(),
+                                                                   )
+        apply_button = QPushButton("&Apply")
+        apply_button.clicked.connect(self.on_apply_button_clicked)
+        layer_layout = QHBoxLayout()
+        footprint_layout = QHBoxLayout()
+        mode_layout = QHBoxLayout()
+        button_layout = QHBoxLayout()
+
+        layer_layout.addWidget(input_layer_label)
+        layer_layout.addWidget(self.label_layer_combo_box)
+        footprint_layout.addWidget(footprint_label)
+        footprint_layout.addWidget(self.footprint_combo_box)
+        footprint_layout.addWidget(footprint_radius_label)
+        footprint_layout.addWidget(self.footprint_radius_input)
+        mode_layout.addWidget(mode_label)
+        mode_layout.addWidget(self.mode_combo_box)
+        button_layout.addWidget(apply_button)
+
+        main_layout.addLayout(layer_layout)
+        main_layout.addLayout(footprint_layout)
+        main_layout.addLayout(mode_layout)
+        main_layout.addLayout(button_layout)
+
+        self.setLayout(main_layout)
+
+
+    def footprint_radius_changed(self):
+        pass
+
+
+    def on_apply_button_clicked(self):
+        text = self.label_layer_combo_box.currentText()
+        self.input_layer = self.napari_util.getLayerWithName(text)
+        footprint = None
+        footprint_text = self.footprint_combo_box.currentText()
+        footprint_radius = int(self.footprint_radius_input.text().strip())
+        if footprint_text == "cube":
+            footprint_width = 2 * footprint_radius + 1
+            footprint = skimage.morphology.footprint_rectangle((footprint_width, footprint_width, footprint_width))
+        else:
+            footprint_function = getattr(skimage.morphology, footprint_text)
+            footprint = footprint_function(footprint_radius)
+        mode = self.mode_combo_box.currentText()
+        self.filter = Closing(self.input_layer.data)
+        self.filter.footprint = footprint
+        self.filter.mode = mode
+        worker = create_worker(self.filter.run,
+                               _progress={'desc': 'Applying closing...'}
+                               )
+        worker.finished.connect(self.on_filter_finished)
+        worker.start()
+
+
+    def on_filter_finished(self):
+        name = self.input_layer.name + " close"
+        self.viewer.add_labels(
+            self.filter.result,
+            name=name,
+            scale=self.input_layer.scale,
+            units=self.input_layer.units,
+            blending='additive'
+        )
+
+
+
+class LabelWidget(ToolboxWidget):
+
+
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer)
+        self.connectivities = ['1', '2', '3']
+        self.connectivity_combo_box = None
+        self.create_layout()
+        self.label_combo_boxes.append(self.label_layer_combo_box)
+
+
+    def create_layout(self):
+        main_layout = QVBoxLayout()
+        input_layer_label, self.label_layer_combo_box = WidgetTool.getComboInput(self, "image:",
+                                                                                 self.label_layers,
+                                                                                 )
+        self.label_layer_combo_box.currentIndexChanged.connect(self.on_layer_changed)
+        connectivity_label, self.connectivity_combo_box = WidgetTool.getComboInput(self, "connectivity:",
+                                                                             self.connectivities,
+                                                                             )
+        apply_button = QPushButton("&Apply")
+        apply_button.clicked.connect(self.on_apply_button_clicked)
+        layer_layout = QHBoxLayout()
+        connectivity_layout = QHBoxLayout()
+        button_layout = QHBoxLayout()
+
+        layer_layout.addWidget(input_layer_label)
+        layer_layout.addWidget(self.label_layer_combo_box)
+        connectivity_layout.addWidget(connectivity_label)
+        connectivity_layout.addWidget(self.connectivity_combo_box)
+        button_layout.addWidget(apply_button)
+
+        main_layout.addLayout(layer_layout)
+        main_layout.addLayout(connectivity_layout)
+        main_layout.addLayout(button_layout)
+
+        self.setLayout(main_layout)
+
+
+    def on_layer_changed(self):
+        print(self.label_layer_combo_box.currentText())
+        layer = self.napari_util.getLayerWithName(self.label_layer_combo_box.currentText())
+        if not isinstance(layer, Labels):
+            return
+        self.connectivity_combo_box.setCurrentText(str(layer.data.ndim))
+
+
+    def on_apply_button_clicked(self):
+        text = self.label_layer_combo_box.currentText()
+        self.input_layer = self.napari_util.getLayerWithName(text)
+        connectivity = int(self.connectivity_combo_box.currentText())
+        if self.input_layer.data.ndim == 2 and connectivity == 3:
+            connectivity = 2
+        self.filter = Label(self.input_layer.data)
+        self.filter.connectivity = connectivity
+        worker = create_worker(self.filter.run,
+                               _progress={'desc': 'Labeling mask...'}
+                               )
+        worker.finished.connect(self.on_filter_finished)
+        worker.start()
+
+
+    def on_filter_finished(self):
+        name = self.input_layer.name + " labels"
+        self.viewer.add_labels(
+            self.filter.result,
+            name=name,
+            scale=self.input_layer.scale,
+            units=self.input_layer.units,
+            blending='additive'
+        )
+
+
+
+class RemoveSmallObjectsWidget(ToolboxWidget):
+
+
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer)
+        self.min_size = 64
+        self.min_size_input = None
+        self.create_layout()
+        self.label_combo_boxes.append(self.label_layer_combo_box)
+
+
+    def create_layout(self):
+        main_layout = QVBoxLayout()
+        input_layer_label, self.label_layer_combo_box = WidgetTool.getComboInput(self, "image:",
+                                                                                 self.label_layers,
+                                                                                 )
+        min_size_label, self.min_size_input = WidgetTool.getLineInput(self, "min. size:",
+                                                                                      self.min_size,
+                                                                                      self.field_width,
+                                                                                      self.min_size_changed)
+        apply_button = QPushButton("&Apply")
+        apply_button.clicked.connect(self.on_apply_button_clicked)
+        layer_layout = QHBoxLayout()
+        min_size_layout = QHBoxLayout()
+        button_layout = QHBoxLayout()
+
+        layer_layout.addWidget(input_layer_label)
+        layer_layout.addWidget(self.label_layer_combo_box)
+        min_size_layout.addWidget(min_size_label)
+        min_size_layout.addWidget(self.min_size_input)
+        button_layout.addWidget(apply_button)
+
+        main_layout.addLayout(layer_layout)
+        main_layout.addLayout(min_size_layout)
+        main_layout.addLayout(button_layout)

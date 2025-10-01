@@ -1,3 +1,7 @@
+import napari
+
+import filament_toolbox
+
 try:
     from ._version import version as __version__
 except ImportError:
@@ -17,6 +21,10 @@ from ._widget import (
     MeijeringFilterWidget,
     DilationWidget,
     rgb_to_8bit,
+    rgb_to_16bit,
+    ClosingWidget,
+    activate,
+    LabelWidget,
 )
 
 __all__ = (
@@ -32,4 +40,15 @@ __all__ = (
     "MeijeringFilterWidget",
     "DilationWidget",
     "rgb_to_8bit",
+    "rgb_to_16bit",
+    "ClosingWidget",
+    "activate"
+    "LabelWidget"
 )
+
+
+@napari.Viewer.bind_key('t')
+def toggle_widget(param):
+    print(param)
+    viewer = napari.current_viewer()
+    viewer.window.add_dock_widget(ThresholdWidget(viewer))

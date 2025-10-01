@@ -15,6 +15,9 @@ contributions:
     - id: filament-toolbox.anisotropic_diffusion_filter
       python_name: filament_toolbox:AnisotropicDiffusionFilterWidget
       title: Anisotropic Diffusion
+    - id: filament-toolbox.close
+      python_name: filament_toolbox:ClosingWidget
+      title: Close
     - id: filament-toolbox.dilate
       python_name: filament_toolbox:DilationWidget
       title: Dilate
@@ -24,6 +27,9 @@ contributions:
     - id: filament-toolbox.gaussian_filter
       python_name: filament_toolbox:GaussianFilterWidget
       title: Gaussian Filter
+    - id: filament-toolbox.label
+      python_name: filament_toolbox:LabelWidget
+      title: Label
     - id: filament-toolbox.median_filter
       python_name: filament_toolbox:MedianFilterWidget
       title: Median Filter
@@ -33,6 +39,9 @@ contributions:
     - id: filament-toolbox.rgb_to_8bit
       python_name: filament_toolbox:rgb_to_8bit
       title: rgb to 8bit
+    - id: filament-toolbox.rgb_to_16bit
+      python_name: filament_toolbox:rgb_to_16bit
+      title: rgb to 16bit
     - id: filament-toolbox.rolling_ball
       python_name: filament_toolbox:RollingBallWidget
       title: Background Subtraction
@@ -55,12 +64,16 @@ contributions:
       display_name: Anisotropic Diffusion
     - command: filament-toolbox.rolling_ball
       display_name: Background Subtraction
+    - command: filament-toolbox.close
+      display_name: Close
     - command: filament-toolbox.dilate
       display_name: Dilate
     - command: filament-toolbox.frangi_filter
       display_name: Frangi Filter
     - command: filament-toolbox.gaussian_filter
       display_name: Gaussian Filter
+    - command: filament-toolbox.label
+      display_name: Label
     - command: filament-toolbox.median_filter
       display_name: Median Filter
     - command: filament-toolbox.meijering_filter
@@ -82,7 +95,9 @@ contributions:
       - command: filament-toolbox.meijering_filter
       - command: filament-toolbox.sato_filter
     morphology:
+      - command: filament-toolbox.close
       - command: filament-toolbox.dilate
+      - command: filament-toolbox.label
     noise:
       - command: filament-toolbox.anisotropic_diffusion_filter
       - command: filament-toolbox.gaussian_filter
@@ -95,6 +110,7 @@ contributions:
       - submenu: convert
     convert:
       - command: filament-toolbox.rgb_to_8bit
+      - command: filament-toolbox.rgb_to_16bit
   submenus:
     - id: background
       label: Background
