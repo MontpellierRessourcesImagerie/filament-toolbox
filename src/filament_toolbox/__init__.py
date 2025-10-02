@@ -25,6 +25,8 @@ from ._widget import (
     ClosingWidget,
     activate,
     LabelWidget,
+    RemoveSmallObjectsWidget,
+    ClearBorderWidget,
 )
 
 __all__ = (
@@ -42,8 +44,10 @@ __all__ = (
     "rgb_to_8bit",
     "rgb_to_16bit",
     "ClosingWidget",
-    "activate"
-    "LabelWidget"
+    "activate",
+    "LabelWidget",
+    "RemoveSmallObjectsWidget",
+    "ClearBorderWidget",
 )
 
 

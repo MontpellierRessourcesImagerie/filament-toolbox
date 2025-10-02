@@ -1,7 +1,8 @@
 from skimage.morphology import binary_dilation, remove_small_objects
 from filament_toolbox.lib.filter import FilterWithSE, Filter
-from skimage.morphology import binary_closing
+from skimage.morphology import binary_closing, skeletonize
 from skimage.measure import label
+from pyhjs import PyHJS, BinaryFrame
 
 
 class Dilation(FilterWithSE):
@@ -57,3 +58,33 @@ class RemoveSmallObjects(Filter):
 
     def run(self):
         self.result = remove_small_objects(self.image, min_size=self.min_size)
+
+
+
+class Skeletonize(Filter):
+
+
+    def __init__(self, input_image):
+        super().__init__(input_image)
+        self.method = "zhang"
+        self.methods = ["lee", "zhang"]
+
+
+    def run(self):
+        self.result = skeletonize(self.image, method=self.method)
+
+
+
+class HamiltonJacobiSkeleton(Filter):
+
+
+    def __init__(self, input_image):
+        super().__init__(input_image)
+        self.flux_threshold = 2.5       # gamma
+        self.dilation = 1.5             # epsilon
+
+
+    def run(self):
+        hjs = PyHJS(self.flux_threshold, self.dilation)
+        frame = BinaryFrame(self.image)
+        self.result = hjs.compute(frame, enable_anisotropic_diffusion=False)

@@ -20,8 +20,8 @@ from filament_toolbox.lib.qtutil import WidgetTool
 from filament_toolbox.lib.napari_util import NapariUtil
 from filament_toolbox.lib.filter import MedianFilter, GaussianFilter, AnisotropicDiffusionFilter, RollingBall
 from filament_toolbox.lib.filter import FrangiFilter, SatoFilter, MeijeringFilter
-from filament_toolbox.lib.segmentation import Threshold
-from filament_toolbox.lib.morphology import Dilation, Closing, Label
+from filament_toolbox.lib.segmentation import Threshold, ClearBorder
+from filament_toolbox.lib.morphology import Dilation, Closing, Label, RemoveSmallObjects
 
 if TYPE_CHECKING:
     import napari
@@ -1235,7 +1235,6 @@ class LabelWidget(ToolboxWidget):
 
 
     def on_layer_changed(self):
-        print(self.label_layer_combo_box.currentText())
         layer = self.napari_util.getLayerWithName(self.label_layer_combo_box.currentText())
         if not isinstance(layer, Labels):
             return
@@ -1304,3 +1303,85 @@ class RemoveSmallObjectsWidget(ToolboxWidget):
         main_layout.addLayout(layer_layout)
         main_layout.addLayout(min_size_layout)
         main_layout.addLayout(button_layout)
+
+        self.setLayout(main_layout)
+
+
+    def min_size_changed(self):
+        pass
+
+
+    def on_apply_button_clicked(self):
+        text = self.label_layer_combo_box.currentText()
+        self.input_layer = self.napari_util.getLayerWithName(text)
+        min_size = int(self.min_size_input.text().strip())
+        self.filter = RemoveSmallObjects(self.input_layer.data)
+        self.filter.min_size = min_size
+        worker = create_worker(self.filter.run,
+                               _progress={'desc': 'Removing small objects...'}
+                               )
+        worker.finished.connect(self.on_filter_finished)
+        worker.start()
+
+
+    def on_filter_finished(self):
+        name = self.input_layer.name + " small objects removed"
+        self.viewer.add_labels(
+            self.filter.result,
+            name=name,
+            scale=self.input_layer.scale,
+            units=self.input_layer.units,
+            blending='additive'
+        )
+
+
+
+class ClearBorderWidget(ToolboxWidget):
+
+
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer)
+        self.create_layout()
+        self.label_combo_boxes.append(self.label_layer_combo_box)
+
+
+    def create_layout(self):
+        main_layout = QVBoxLayout()
+        input_layer_label, self.label_layer_combo_box = WidgetTool.getComboInput(self, "image:",
+                                                                                 self.label_layers,
+                                                                                 )
+        apply_button = QPushButton("&Apply")
+        apply_button.clicked.connect(self.on_apply_button_clicked)
+        layer_layout = QHBoxLayout()
+        button_layout = QHBoxLayout()
+
+        layer_layout.addWidget(input_layer_label)
+        layer_layout.addWidget(self.label_layer_combo_box)
+        button_layout.addWidget(apply_button)
+
+        main_layout.addLayout(layer_layout)
+        main_layout.addLayout(button_layout)
+
+        self.setLayout(main_layout)
+
+
+    def on_apply_button_clicked(self):
+        text = self.label_layer_combo_box.currentText()
+        self.input_layer = self.napari_util.getLayerWithName(text)
+        self.filter = ClearBorder(self.input_layer.data)
+        worker = create_worker(self.filter.run,
+                               _progress={'desc': 'Clearing the border...'}
+                               )
+        worker.finished.connect(self.on_filter_finished)
+        worker.start()
+
+
+    def on_filter_finished(self):
+        name = self.input_layer.name + " cleared border"
+        self.viewer.add_labels(
+            self.filter.result,
+            name=name,
+            scale=self.input_layer.scale,
+            units=self.input_layer.units,
+            blending='additive'
+        )
