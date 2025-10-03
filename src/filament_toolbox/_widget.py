@@ -16,12 +16,16 @@ import skimage.morphology
 from skimage.color import rgb2gray
 from napari.utils.events import Event
 from napari.qt.threading import create_worker
+from napari.utils import notifications
+from skimage.morphology import dilation
+
 from filament_toolbox.lib.qtutil import WidgetTool
 from filament_toolbox.lib.napari_util import NapariUtil
 from filament_toolbox.lib.filter import MedianFilter, GaussianFilter, AnisotropicDiffusionFilter, RollingBall
 from filament_toolbox.lib.filter import FrangiFilter, SatoFilter, MeijeringFilter
 from filament_toolbox.lib.segmentation import Threshold, ClearBorder
-from filament_toolbox.lib.morphology import Dilation, Closing, Label, RemoveSmallObjects
+from filament_toolbox.lib.morphology import Dilation, Closing, Label, RemoveSmallObjects, Skeletonize
+from filament_toolbox.lib.morphology import HamiltonJacobiSkeleton
 
 if TYPE_CHECKING:
     import napari
@@ -112,6 +116,25 @@ class ToolboxWidget(QWidget):
             WidgetTool.replaceItemsInComboBox(combo_box, image_layers)
         for combo_box in self.label_combo_boxes:
             WidgetTool.replaceItemsInComboBox(combo_box, label_layers)
+
+
+    @classmethod
+    def get_footprint(cls, name, radius, dims):
+        se_name = name
+        two_d_ses = {'ball': 'disk', 'octahedron': 'diamond'}
+        if dims == 2:
+            if name in two_d_ses.keys():
+                se_name = two_d_ses[name]
+        if name == "cube":
+            footprint_width = 2 * radius + 1
+            if dims == 2:
+                footprint = skimage.morphology.footprint_rectangle((footprint_width, footprint_width))
+            else:
+                footprint = skimage.morphology.footprint_rectangle((footprint_width, footprint_width, footprint_width))
+        else:
+            footprint_function = getattr(skimage.morphology, se_name)
+            footprint = footprint_function(radius)
+        return footprint
 
 
 
@@ -1066,15 +1089,10 @@ class DilationWidget(ToolboxWidget):
     def on_apply_button_clicked(self):
         text = self.label_layer_combo_box.currentText()
         self.input_layer = self.napari_util.getLayerWithName(text)
-        footprint = None
         footprint_text = self.footprint_combo_box.currentText()
         footprint_radius = int(self.footprint_radius_input.text().strip())
-        if footprint_text == "cube":
-            footprint_width = 2 * footprint_radius + 1
-            footprint = skimage.morphology.footprint_rectangle((footprint_width, footprint_width, footprint_width))
-        else:
-            footprint_function = getattr(skimage.morphology, footprint_text)
-            footprint = footprint_function(footprint_radius)
+        print('footprint_radius', footprint_radius)
+        footprint = self.get_footprint(footprint_text, footprint_radius,  self.input_layer.data.ndim)
         mode = self.mode_combo_box.currentText()
         self.filter = Dilation(self.input_layer.data)
         self.filter.footprint = footprint
@@ -1163,15 +1181,9 @@ class ClosingWidget(ToolboxWidget):
     def on_apply_button_clicked(self):
         text = self.label_layer_combo_box.currentText()
         self.input_layer = self.napari_util.getLayerWithName(text)
-        footprint = None
         footprint_text = self.footprint_combo_box.currentText()
         footprint_radius = int(self.footprint_radius_input.text().strip())
-        if footprint_text == "cube":
-            footprint_width = 2 * footprint_radius + 1
-            footprint = skimage.morphology.footprint_rectangle((footprint_width, footprint_width, footprint_width))
-        else:
-            footprint_function = getattr(skimage.morphology, footprint_text)
-            footprint = footprint_function(footprint_radius)
+        footprint = self.get_footprint(footprint_text, footprint_radius, self.input_layer.data.ndim)
         mode = self.mode_combo_box.currentText()
         self.filter = Closing(self.input_layer.data)
         self.filter.footprint = footprint
@@ -1378,6 +1390,171 @@ class ClearBorderWidget(ToolboxWidget):
 
     def on_filter_finished(self):
         name = self.input_layer.name + " cleared border"
+        self.viewer.add_labels(
+            self.filter.result,
+            name=name,
+            scale=self.input_layer.scale,
+            units=self.input_layer.units,
+            blending='additive'
+        )
+
+
+
+class SkeletonizeWidget(ToolboxWidget):
+
+
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer)
+        self.method = "lee"
+        self.methods = ["lee", "zhang"]
+        self.method_combo_box = None
+        self.create_layout()
+        self.label_combo_boxes.append(self.label_layer_combo_box)
+
+
+    def create_layout(self):
+        main_layout = QVBoxLayout()
+        input_layer_label, self.label_layer_combo_box = WidgetTool.getComboInput(self, "image:",
+                                                                                 self.label_layers,
+                                                                                 )
+        self.label_layer_combo_box.currentIndexChanged.connect(self.on_layer_changed)
+        method_label, self.method_combo_box = WidgetTool.getComboInput(self, "method:",
+                                                                                   self.methods,
+                                                                                   )
+        apply_button = QPushButton("&Apply")
+        apply_button.clicked.connect(self.on_apply_button_clicked)
+        layer_layout = QHBoxLayout()
+        method_layout = QHBoxLayout()
+        button_layout = QHBoxLayout()
+
+        layer_layout.addWidget(input_layer_label)
+        layer_layout.addWidget(self.label_layer_combo_box)
+        method_layout.addWidget(method_label)
+        method_layout.addWidget(self.method_combo_box)
+        button_layout.addWidget(apply_button)
+
+        main_layout.addLayout(layer_layout)
+        main_layout.addLayout(method_layout)
+        main_layout.addLayout(button_layout)
+
+        self.setLayout(main_layout)
+
+
+    def on_layer_changed(self):
+        layer = self.napari_util.getLayerWithName(self.label_layer_combo_box.currentText())
+        if not isinstance(layer, Labels):
+            return
+        if layer.data.ndim == 3 and self.method_combo_box.currentText() == "zhang":
+            self.method_combo_box.setCurrentText("lee")
+
+
+    def on_apply_button_clicked(self):
+        text = self.label_layer_combo_box.currentText()
+        self.input_layer = self.napari_util.getLayerWithName(text)
+        self.filter = Skeletonize(self.input_layer.data)
+        self.filter.method = self.method_combo_box.currentText()
+        if self.input_layer.data.ndim == 3 and  self.filter.method == "zhang":
+            self.filter.method = 'lee'
+            notifications.show_info("Can't apply zhang to 3D data, using lee instead.")
+        worker = create_worker(self.filter.run,
+                               _progress={'desc': 'Skeletonizing ('+self.filter.method+')...'}
+                               )
+        worker.finished.connect(self.on_filter_finished)
+        worker.start()
+
+
+    def on_filter_finished(self):
+        name = self.input_layer.name + " skeleton-" + self.filter.method
+        self.viewer.add_labels(
+            self.filter.result,
+            name=name,
+            scale=self.input_layer.scale,
+            units=self.input_layer.units,
+            blending='additive'
+        )
+
+
+
+class HamiltonJacobiSkeletonizeWidget(ToolboxWidget):
+
+
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer)
+        self.flux_threshold = 2.5  # gamma
+        self.dilation = 1.5        # epsilon
+        self.use_anisotropic_diffusion = False
+        self.flux_threshold_input = None
+        self.dilation_input = None
+        self.use_anisotropic_diffusion_checkbox = None
+        self.create_layout()
+        self.label_combo_boxes.append(self.label_layer_combo_box)
+
+
+    def create_layout(self):
+        main_layout = QVBoxLayout()
+        input_layer_label, self.label_layer_combo_box = WidgetTool.getComboInput(self, "image:",
+                                                                                 self.label_layers,
+                                                                                 )
+        flux_threshold_label, self.flux_threshold_input = WidgetTool.getLineInput(self, "flux threshold:",
+                                                                                      self.flux_threshold,
+                                                                                      self.field_width,
+                                                                                      self.flux_threshold_changed)
+        dilation_label, self.dilation_input = WidgetTool.getLineInput(self, "dilation:",
+                                                                                  self.dilation,
+                                                                                  self.field_width,
+                                                                                  self.dilation_changed)
+        self.use_anisotropic_diffusion_checkbox = QCheckBox("use anisotropic diffusion")
+        apply_button = QPushButton("&Apply")
+        apply_button.clicked.connect(self.on_apply_button_clicked)
+        layer_layout = QHBoxLayout()
+        flux_layout = QHBoxLayout()
+        dilation_layout = QHBoxLayout()
+        button_layout = QHBoxLayout()
+
+        layer_layout.addWidget(input_layer_label)
+        layer_layout.addWidget(self.label_layer_combo_box)
+        flux_layout.addWidget(flux_threshold_label)
+        flux_layout.addWidget(self.flux_threshold_input)
+        dilation_layout.addWidget(dilation_label)
+        dilation_layout.addWidget(self.dilation_input)
+        button_layout.addWidget(apply_button)
+
+        main_layout.addLayout(layer_layout)
+        main_layout.addLayout(flux_layout)
+        main_layout.addLayout(dilation_layout)
+        main_layout.addWidget(self.use_anisotropic_diffusion_checkbox)
+        main_layout.addLayout(button_layout)
+
+        self.setLayout(main_layout)
+
+
+    def flux_threshold_changed(self):
+        pass
+
+
+    def dilation_changed(self):
+        pass
+
+
+    def on_apply_button_clicked(self):
+        text = self.label_layer_combo_box.currentText()
+        self.input_layer = self.napari_util.getLayerWithName(text)
+        flux_threshold = float(self.flux_threshold_input.text().strip())
+        dilation_parameter = float(self.dilation_input.text().strip())
+        use_anisotropic_diffusion = self.use_anisotropic_diffusion_checkbox.isChecked()
+        self.filter = HamiltonJacobiSkeleton(self.input_layer.data)
+        self.filter.flux_threshold = flux_threshold
+        self.filter.dilation = dilation_parameter
+        self.filter.use_anisotropic_diffusion = use_anisotropic_diffusion
+        worker = create_worker(self.filter.run,
+                               _progress={'desc': 'Hamilton-Jacobi Skeletonizing...'}
+                               )
+        worker.finished.connect(self.on_filter_finished)
+        worker.start()
+
+
+    def on_filter_finished(self):
+        name = self.input_layer.name + " HJS"
         self.viewer.add_labels(
             self.filter.result,
             name=name,

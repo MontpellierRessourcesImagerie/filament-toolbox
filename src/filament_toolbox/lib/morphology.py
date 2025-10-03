@@ -1,3 +1,4 @@
+import numpy as np
 from skimage.morphology import binary_dilation, remove_small_objects
 from filament_toolbox.lib.filter import FilterWithSE, Filter
 from skimage.morphology import binary_closing, skeletonize
@@ -82,9 +83,15 @@ class HamiltonJacobiSkeleton(Filter):
         super().__init__(input_image)
         self.flux_threshold = 2.5       # gamma
         self.dilation = 1.5             # epsilon
+        self.use_anisotropic_diffusion = False
 
 
     def run(self):
+        print("HJS", "threshold", self.flux_threshold, "dilation", self.dilation)
         hjs = PyHJS(self.flux_threshold, self.dilation)
         frame = BinaryFrame(self.image)
-        self.result = hjs.compute(frame, enable_anisotropic_diffusion=False)
+        hjs.compute(frame, enable_anisotropic_diffusion=self.use_anisotropic_diffusion)
+        skeleton_raw =  hjs.get_skeleton_image()
+        skeleton = np.zeros(skeleton_raw.shape, np.uint8)
+        skeleton[skeleton_raw > 0] = 1
+        self.result = skeleton

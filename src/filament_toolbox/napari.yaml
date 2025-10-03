@@ -30,6 +30,9 @@ contributions:
     - id: filament-toolbox.gaussian_filter
       python_name: filament_toolbox:GaussianFilterWidget
       title: Gaussian Filter
+    - id: filament-toolbox.hamilton_jacobi_skeletonize
+      python_name: filament_toolbox:HamiltonJacobiSkeletonizeWidget
+      title: Hamilton Jacobi Skeletonize
     - id: filament-toolbox.label
       python_name: filament_toolbox:LabelWidget
       title: Label
@@ -54,6 +57,9 @@ contributions:
     - id: filament-toolbox.sato_filter
       python_name: filament_toolbox:SatoFilterWidget
       title: Sato Filter
+    - id: filament-toolbox.skeletonize
+      python_name: filament_toolbox:SkeletonizeWidget
+      title: Skeletonize
     - id: filament-toolbox.threshold
       python_name: filament_toolbox:ThresholdWidget
       title: Threshold
@@ -80,6 +86,8 @@ contributions:
       display_name: Frangi Filter
     - command: filament-toolbox.gaussian_filter
       display_name: Gaussian Filter
+    - command: filament-toolbox.hamilton_jacobi_skeletonize
+      display_name: Hamilton-Jacobi Skeletonize
     - command: filament-toolbox.label
       display_name: Label
     - command: filament-toolbox.median_filter
@@ -90,6 +98,8 @@ contributions:
       display_name: Remove Small Objects
     - command: filament-toolbox.sato_filter
       display_name: Sato Filter
+    - command: filament-toolbox.skeletonize
+      display_name: Skeletonize
     - command: filament-toolbox.threshold
       display_name: Threshold
   menus:
@@ -98,6 +108,7 @@ contributions:
       - submenu: morphology
       - submenu: noise
       - submenu: ridge
+      - submenu: skeletonize
     background:
       - command: filament-toolbox.rolling_ball
     ridge:
@@ -113,6 +124,9 @@ contributions:
       - command: filament-toolbox.anisotropic_diffusion_filter
       - command: filament-toolbox.gaussian_filter
       - command: filament-toolbox.median_filter
+    skeletonize:
+      - command: filament-toolbox.skeletonize
+      - command: filament-toolbox.hamilton_jacobi_skeletonize
     napari/layers/segment:
       - submenu: threshold
       - command: filament-toolbox.clear_border
@@ -132,6 +146,8 @@ contributions:
       label: Noise
     - id: ridge
       label: Ridge
+    - id: skeletonize
+      label: Skeletonize
     - id: threshold
       label: Threshold
     - id: convert

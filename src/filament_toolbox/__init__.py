@@ -27,7 +27,10 @@ from ._widget import (
     LabelWidget,
     RemoveSmallObjectsWidget,
     ClearBorderWidget,
+    SkeletonizeWidget,
+    HamiltonJacobiSkeletonizeWidget,
 )
+
 
 __all__ = (
     "napari_get_reader",
@@ -48,6 +51,8 @@ __all__ = (
     "LabelWidget",
     "RemoveSmallObjectsWidget",
     "ClearBorderWidget",
+    "SkeletonizeWidget",
+    "HamiltonJacobiSkeletonizeWidget",
 )
 
 
