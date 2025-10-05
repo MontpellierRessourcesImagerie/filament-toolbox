@@ -36,7 +36,8 @@ dependencies = [
     "scikit-learn",
     "skan",
     "pyperclip",
-    "set-calibration"
+    "set-calibration",
+    "brightest-path-lib",
 ]
 
 [project.optional-dependencies]

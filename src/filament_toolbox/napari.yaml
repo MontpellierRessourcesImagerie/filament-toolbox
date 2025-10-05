@@ -36,6 +36,9 @@ contributions:
     - id: filament-toolbox.label
       python_name: filament_toolbox:LabelWidget
       title: Label
+    - id: filament-toolbox.measure_skeleton
+      python_name: filament_toolbox:measure_skeleton
+      title: Measure Skeleton
     - id: filament-toolbox.median_filter
       python_name: filament_toolbox:MedianFilterWidget
       title: Median Filter
@@ -132,6 +135,8 @@ contributions:
     skeletonize:
       - command: filament-toolbox.skeletonize
       - command: filament-toolbox.hamilton_jacobi_skeletonize
+    napari/layers/measure:
+      - command: filament-toolbox.measure_skeleton
     napari/layers/segment:
       - submenu: threshold
       - command: filament-toolbox.clear_border

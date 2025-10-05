@@ -17,7 +17,9 @@ from skimage.color import rgb2gray
 from napari.utils.events import Event
 from napari.qt.threading import create_worker
 from napari.utils import notifications
-from filament_toolbox.lib.qtutil import WidgetTool
+
+from filament_toolbox.lib.measure import MeasureSkeleton
+from filament_toolbox.lib.qtutil import WidgetTool, TableView
 from filament_toolbox.lib.napari_util import NapariUtil
 from filament_toolbox.lib.filter import MedianFilter, GaussianFilter, AnisotropicDiffusionFilter, RollingBall
 from filament_toolbox.lib.filter import FrangiFilter, SatoFilter, MeijeringFilter
@@ -30,8 +32,24 @@ if TYPE_CHECKING:
     import napari
 
 
+
 def activate():
     print("Filament Toolbox activated")
+
+
+
+def measure_skeleton(viewer: "napari.viewer.Viewer"):
+    layer = viewer.layers.selection.active
+    if not isinstance(layer, Labels):
+        return
+    measure = MeasureSkeleton(layer.data)
+    measure.scale = layer.scale
+    measure.units = layer.units
+    measure.run()
+    table = TableView(measure.result)
+    viewer.window.add_dock_widget(table)
+    viewer.add_labels(measure.result_image)
+
 
 
 def rgb_to_8bit( viewer: "napari.viewer.Viewer"):

@@ -30,6 +30,7 @@ from ._widget import (
     SkeletonizeWidget,
     HamiltonJacobiSkeletonizeWidget,
     PixelClassifierWidget,
+    measure_skeleton,
 )
 
 
@@ -55,6 +56,7 @@ __all__ = (
     "SkeletonizeWidget",
     "HamiltonJacobiSkeletonizeWidget",
     "PixelClassifierWidget",
+    "measure_skeleton",
 )
 
 
