@@ -42,6 +42,9 @@ contributions:
     - id: filament-toolbox.meijering_filter
       python_name: filament_toolbox:MeijeringFilterWidget
       title: Meijering Filter
+    - id: filament-toolbox.pixel_classifier
+      python_name: filament_toolbox:PixelClassifierWidget
+      title: Pixel Classifier
     - id: filament-toolbox.remove_small_objects
       python_name: filament_toolbox:RemoveSmallObjectsWidget
       title: Remove Small Objects
@@ -94,6 +97,8 @@ contributions:
       display_name: Median Filter
     - command: filament-toolbox.meijering_filter
       display_name: Meijering Filter
+    - command: filament-toolbox.pixel_classifier
+      display_name: Pixel Classifier
     - command: filament-toolbox.remove_small_objects
       display_name: Remove Small Objects
     - command: filament-toolbox.sato_filter
@@ -130,6 +135,7 @@ contributions:
     napari/layers/segment:
       - submenu: threshold
       - command: filament-toolbox.clear_border
+      - command: filament-toolbox.pixel_classifier
     threshold:
       - command: filament-toolbox.threshold
     napari/layers/data:

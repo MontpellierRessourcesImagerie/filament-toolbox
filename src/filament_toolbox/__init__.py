@@ -29,6 +29,7 @@ from ._widget import (
     ClearBorderWidget,
     SkeletonizeWidget,
     HamiltonJacobiSkeletonizeWidget,
+    PixelClassifierWidget,
 )
 
 
@@ -53,6 +54,7 @@ __all__ = (
     "ClearBorderWidget",
     "SkeletonizeWidget",
     "HamiltonJacobiSkeletonizeWidget",
+    "PixelClassifierWidget",
 )
 
 

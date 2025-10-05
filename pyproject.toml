@@ -33,6 +33,7 @@ dependencies = [
     "magicgui",
     "qtpy",
     "scikit-image",
+    "scikit-learn",
     "skan",
     "pyperclip",
     "set-calibration"

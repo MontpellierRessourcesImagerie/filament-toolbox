@@ -17,8 +17,6 @@ from skimage.color import rgb2gray
 from napari.utils.events import Event
 from napari.qt.threading import create_worker
 from napari.utils import notifications
-from skimage.morphology import dilation
-
 from filament_toolbox.lib.qtutil import WidgetTool
 from filament_toolbox.lib.napari_util import NapariUtil
 from filament_toolbox.lib.filter import MedianFilter, GaussianFilter, AnisotropicDiffusionFilter, RollingBall
@@ -26,6 +24,7 @@ from filament_toolbox.lib.filter import FrangiFilter, SatoFilter, MeijeringFilte
 from filament_toolbox.lib.segmentation import Threshold, ClearBorder
 from filament_toolbox.lib.morphology import Dilation, Closing, Label, RemoveSmallObjects, Skeletonize
 from filament_toolbox.lib.morphology import HamiltonJacobiSkeleton
+from filament_toolbox.lib.ml import RandomForestPixelClassifier
 
 if TYPE_CHECKING:
     import napari
@@ -90,6 +89,7 @@ class ToolboxWidget(QWidget):
         self.label_layers = self.napari_util.getLabelLayers()
         self.image_combo_boxes = []
         self.label_combo_boxes = []
+        self.point_combo_boxes = []
         self.input_layer_combo_box = None
         self.label_layer_combo_box = None
         self.footprints = ["none", "cube", "ball", "octahedron"]
@@ -112,10 +112,13 @@ class ToolboxWidget(QWidget):
     def update_layer_selection_combo_boxes(self):
         image_layers = self.napari_util.getImageLayers()
         label_layers = self.napari_util.getLabelLayers()
+        point_layers = self.napari_util.getPointsLayers()
         for combo_box in self.image_combo_boxes:
             WidgetTool.replaceItemsInComboBox(combo_box, image_layers)
         for combo_box in self.label_combo_boxes:
             WidgetTool.replaceItemsInComboBox(combo_box, label_layers)
+        for combo_box in self.point_combo_boxes:
+            WidgetTool.replaceItemsInComboBox(combo_box, point_layers)
 
 
     @classmethod
@@ -156,7 +159,6 @@ class MedianFilterWidget(ToolboxWidget):
 
 
     def create_layout(self):
-
         main_layout = QVBoxLayout()
         input_layer_label, self.input_layer_combo_box = WidgetTool.getComboInput(self, "image:",
                                                                                  self.image_layers,
@@ -626,7 +628,6 @@ class ThresholdWidget(ToolboxWidget):
         self.original_blending = new_layer.blending
         new_layer.colormap = 'HiLo'
         new_layer.blending = "additive"
-
         sliders_min = int(round(new_layer.contrast_limits_range[0]))
         sliders_max = int(round(new_layer.contrast_limits_range[1]))
         if new_layer.data.dtype in (np.uint8, np.uint16, uint32):
@@ -638,6 +639,14 @@ class ThresholdWidget(ToolboxWidget):
         self.max_value_slider.setMinimum(sliders_min)
         self.max_value_slider.setMaximum(sliders_max)
         self.max_value_slider.setValue(sliders_max)
+        if 'float' in str(new_layer.data.dtype):
+            self.min_value_slider.setMinimum(0)
+            self.min_value_slider.setMaximum(65535)
+            self.min_value_slider.setValue(0)
+            self.max_value_slider.setMinimum(0)
+            self.max_value_slider.setMaximum(65535)
+            self.max_value_slider.setValue(65535)
+
 
 
     def min_threshold_changed(self, value):
@@ -648,7 +657,15 @@ class ThresholdWidget(ToolboxWidget):
             self.max_value_slider.setValue(value + 1)
         if value >= max_threshold_value == max_threshold_limit:
             new_value = value - 1
-        self.current_layer.contrast_limits = [new_value, max_threshold_value]
+        text = self.input_layer_combo_box.currentText()
+        layer = self.napari_util.getLayerWithName(text)
+        data_min = np.min(layer.data)
+        data_max = np.max(layer.data)
+        new_value_float = new_value
+        if 'float' in str(layer.data.dtype):
+            new_value_float = data_min + ((new_value/65535.0) * (data_max - data_min))
+            max_threshold_value = data_min + ((max_threshold_value/65535.0) * (data_max - data_min))
+        self.current_layer.contrast_limits = [new_value_float, max_threshold_value]
         self.min_value_input.setText(str(new_value))
 
 
@@ -660,7 +677,15 @@ class ThresholdWidget(ToolboxWidget):
             self.min_value_slider.setValue(value - 1)
         if value <= min_threshold_value == min_threshold_limit:
             new_value = value + 1
-        self.current_layer.contrast_limits = [min_threshold_value, new_value]
+        text = self.input_layer_combo_box.currentText()
+        layer = self.napari_util.getLayerWithName(text)
+        data_min = np.min(layer.data)
+        data_max = np.max(layer.data)
+        new_value_float = new_value
+        if 'float' in str(layer.data.dtype):
+            new_value_float = data_min + ((new_value/65535.0) * (data_max - data_min))
+            min_threshold_value = data_min + ((min_threshold_value/65535.0) * (data_max - data_min))
+        self.current_layer.contrast_limits = [min_threshold_value, new_value_float]
         self.max_value_input.setText(str(new_value))
 
 
@@ -676,9 +701,16 @@ class ThresholdWidget(ToolboxWidget):
 
     def on_apply_button_clicked(self):
         self.input_layer = self.current_layer
+        data_min = np.min(self.input_layer.data)
+        data_max = np.max(self.input_layer.data)
+        min_value = self.min_value_slider.value()
+        max_value = self.max_value_slider.value()
+        if 'float' in str(self.input_layer.data.dtype):
+            min_value = data_min + ((min_value / 65535.0) * (data_max - data_min))
+            max_value = data_min + ((max_value / 65535.0) * (data_max - data_min))
         self.filter = Threshold(self.current_layer.data)
-        self.filter.min_value = self.min_value_slider.value()
-        self.filter.max_value = self.max_value_slider.value()
+        self.filter.min_value = min_value
+        self.filter.max_value = max_value
         worker = create_worker(self.filter.run,
                                _progress={'desc': 'Thresholding image...'}
                                )
@@ -1557,6 +1589,160 @@ class HamiltonJacobiSkeletonizeWidget(ToolboxWidget):
         name = self.input_layer.name + " HJS"
         self.viewer.add_labels(
             self.filter.result,
+            name=name,
+            scale=self.input_layer.scale,
+            units=self.input_layer.units,
+            blending='additive'
+        )
+
+
+
+class PixelClassifierWidget(ToolboxWidget):
+    
+    
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer)
+        self.point_layers = self.napari_util.getPointsLayers()
+        self.point_layer_combo_box = None
+        self.intensity_features = True
+        self.edges_features = True
+        self.texture_features = True
+        self.intensity_check_box = None
+        self.edges_check_box = None
+        self.texture_check_box = None
+        self.sigma_min = 1
+        self.sigma_max = 16
+        self.num_sigma = None
+        self.sigma_min_input = None
+        self.sigma_max_input = None
+        self.num_sigma_input = None
+        self.pixelClassifier = None
+        self.create_layout()
+        self.image_combo_boxes.append(self.input_layer_combo_box)
+        self.point_combo_boxes.append(self.point_layer_combo_box)
+
+
+    def create_layout(self):
+        main_layout = QVBoxLayout()
+        input_layer_label, self.input_layer_combo_box = WidgetTool.getComboInput(self, "image:",
+                                                                                 self.image_layers,
+                                                                                 )
+        point_layer_label, self.point_layer_combo_box = WidgetTool.getComboInput(self, "points:",
+                                                                                 self.point_layers,
+                                                                                 )
+        self.intensity_check_box = QCheckBox("Intensity features")
+        self.intensity_check_box.setChecked(self.intensity_features)
+        self.edges_check_box = QCheckBox("Edges Features")
+        self.edges_check_box.setChecked(self.edges_features)
+        self.texture_check_box = QCheckBox("Texture Features")
+        self.texture_check_box.setChecked(self.texture_features)
+        sigma_min_label, self.sigma_min_input = WidgetTool.getLineInput(self, "sigma min.:",
+                                                                                  self.sigma_min,
+                                                                                  self.field_width,
+                                                                                  self.sigma_changed)
+        sigma_max_label, self.sigma_max_input = WidgetTool.getLineInput(self, "sigma max.:",
+                                                                        self.sigma_max,
+                                                                        self.field_width,
+                                                                        self.sigma_changed)
+        num_sigma_label, self.num_sigma_input = WidgetTool.getLineInput(self, "num. sigma:",
+                                                                        self.num_sigma,
+                                                                        self.field_width,
+                                                                        self.sigma_changed)
+        train_button = QPushButton("&Train")
+        train_button.clicked.connect(self.on_train_button_clicked)
+        classify_button = QPushButton("&Classify")
+        classify_button.clicked.connect(self.on_classify_button_clicked)
+
+        layer_layout = QHBoxLayout()
+        point_layout = QHBoxLayout()
+        checkboxes_layout = QVBoxLayout()
+        sigma_min_layout = QHBoxLayout()
+        sigma_max_layout = QHBoxLayout()
+        num_sigma_layout = QHBoxLayout()
+        button_layout = QVBoxLayout()
+
+        layer_layout.addWidget(input_layer_label)
+        layer_layout.addWidget(self.input_layer_combo_box)
+        point_layout.addWidget(point_layer_label)
+        point_layout.addWidget(self.point_layer_combo_box)
+        checkboxes_layout.addWidget(self.intensity_check_box)
+        checkboxes_layout.addWidget(self.edges_check_box)
+        checkboxes_layout.addWidget(self.texture_check_box)
+        sigma_min_layout.addWidget(sigma_min_label)
+        sigma_min_layout.addWidget(self.sigma_min_input)
+        sigma_max_layout.addWidget(sigma_max_label)
+        sigma_max_layout.addWidget(self.sigma_max_input)
+        num_sigma_layout.addWidget(num_sigma_label)
+        num_sigma_layout.addWidget(self.num_sigma_input)
+        button_layout.addWidget(train_button)
+        button_layout.addWidget(classify_button)
+
+        main_layout.addLayout(layer_layout)
+        main_layout.addLayout(point_layout)
+        main_layout.addLayout(checkboxes_layout)
+        main_layout.addLayout(sigma_min_layout)
+        main_layout.addLayout(sigma_max_layout)
+        main_layout.addLayout(num_sigma_layout)
+        main_layout.addLayout(button_layout)
+
+        self.setLayout(main_layout)
+
+
+    def sigma_changed(self):
+        pass
+
+
+    def on_train_button_clicked(self):
+        text = self.input_layer_combo_box.currentText()
+        self.input_layer = self.napari_util.getLayerWithName(text)
+        text = self.point_layer_combo_box.currentText()
+        point_layer = self.napari_util.getLayerWithName(text)
+        use_intensity = self.intensity_check_box.isChecked()
+        use_edges = self.edges_check_box.isChecked()
+        use_texture = self.texture_check_box.isChecked()
+        sigma_min = int(self.sigma_min_input.text().strip())
+        sigma_max = int(self.sigma_max_input.text().strip())
+        num_sigma = self.sigma_max_input.text().strip()
+        if num_sigma in ['None', 'NONE', 'none']:
+            num_sigma = None
+        else:
+            num_sigma = int(num_sigma)
+        self.pixelClassifier = RandomForestPixelClassifier(self.input_layer.data)
+        self.pixelClassifier.training_points = point_layer.data
+        self.pixelClassifier.training_points_classes = [str(e) for e in point_layer.face_color]
+        self.pixelClassifier.intensity = use_intensity
+        self.pixelClassifier.edges = use_edges
+        self.pixelClassifier.texture = use_texture
+        self.pixelClassifier.sigma_min = sigma_min
+        self.pixelClassifier.sigma_max = sigma_max
+        self.pixelClassifier.num_sigma = num_sigma
+        worker = create_worker(self.pixelClassifier.train,
+                               _progress={'desc': 'Training Pixel Classifier...'}
+                               )
+        worker.finished.connect(self.on_train_finished)
+        worker.start()
+
+
+    def on_train_finished(self):
+        self.pixelClassifier.predict()
+        name = self.input_layer.name + " labels"
+        self.viewer.add_labels(
+            self.pixelClassifier.result,
+            name=name,
+            scale=self.input_layer.scale,
+            units=self.input_layer.units,
+            blending='additive'
+        )
+
+
+    def on_classify_button_clicked(self):
+        text = self.input_layer_combo_box.currentText()
+        self.input_layer = self.napari_util.getLayerWithName(text)
+        self.pixelClassifier.image = self.input_layer.data
+        self.pixelClassifier.predict()
+        name = self.input_layer.name + " labels"
+        self.viewer.add_labels(
+            self.pixelClassifier.result,
             name=name,
             scale=self.input_layer.scale,
             units=self.input_layer.units,
