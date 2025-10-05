@@ -15,6 +15,9 @@ contributions:
     - id: filament-toolbox.anisotropic_diffusion_filter
       python_name: filament_toolbox:AnisotropicDiffusionFilterWidget
       title: Anisotropic Diffusion
+    - id: filament-toolbox.brightest_path_tracing
+      python_name: filament_toolbox:BrightestPathTracingWidget
+      title: Brightest Path Tracing
     - id: filament-toolbox.clear_border
       python_name: filament_toolbox:ClearBorderWidget
       title: Clear Border
@@ -82,6 +85,8 @@ contributions:
       display_name: Anisotropic Diffusion
     - command: filament-toolbox.rolling_ball
       display_name: Background Subtraction
+    - command: filament-toolbox.brightest_path_tracing
+      display_name: Brightest Path Tracing
     - command: filament-toolbox.clear_border
       display_name: Clear Border
     - command: filament-toolbox.close
@@ -117,6 +122,7 @@ contributions:
       - submenu: noise
       - submenu: ridge
       - submenu: skeletonize
+      - submenu: tracing
     background:
       - command: filament-toolbox.rolling_ball
     ridge:
@@ -135,6 +141,8 @@ contributions:
     skeletonize:
       - command: filament-toolbox.skeletonize
       - command: filament-toolbox.hamilton_jacobi_skeletonize
+    tracing:
+      - command: filament-toolbox.brightest_path_tracing
     napari/layers/measure:
       - command: filament-toolbox.measure_skeleton
     napari/layers/segment:
@@ -161,5 +169,7 @@ contributions:
       label: Skeletonize
     - id: threshold
       label: Threshold
+    - id: tracing
+      label: Tracing
     - id: convert
       label: Convert

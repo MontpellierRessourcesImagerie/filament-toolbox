@@ -27,6 +27,7 @@ from filament_toolbox.lib.segmentation import Threshold, ClearBorder
 from filament_toolbox.lib.morphology import Dilation, Closing, Label, RemoveSmallObjects, Skeletonize
 from filament_toolbox.lib.morphology import HamiltonJacobiSkeleton
 from filament_toolbox.lib.ml import RandomForestPixelClassifier
+from filament_toolbox.lib.tracing import BrightestPathTracing
 
 if TYPE_CHECKING:
     import napari
@@ -1794,6 +1795,84 @@ class PixelClassifierWidget(ToolboxWidget):
         name = self.input_layer.name + " labels"
         self.viewer.add_labels(
             self.pixelClassifier.result,
+            name=name,
+            scale=self.input_layer.scale,
+            units=self.input_layer.units,
+            blending='additive'
+        )
+
+
+
+class BrightestPathTracingWidget(ToolboxWidget):
+
+
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer)
+        self.point_layers = self.napari_util.getPointsLayers()
+        self.point_layer_combo_box = None
+        self.methods = ["A-star", "NBA-star"]
+        self.method = "NBA-star"
+        self.method_combo_box = None
+        self.tracer = None
+        self.create_layout()
+        self.image_combo_boxes.append(self.input_layer_combo_box)
+        self.point_combo_boxes.append(self.point_layer_combo_box)
+
+
+    def create_layout(self):
+        main_layout = QVBoxLayout()
+        input_layer_label, self.input_layer_combo_box = WidgetTool.getComboInput(self, "image:",
+                                                                                 self.image_layers,
+                                                                                 )
+        point_layer_label, self.point_layer_combo_box = WidgetTool.getComboInput(self, "points:",
+                                                                                 self.point_layers,
+                                                                                 )
+        method_layer_label, self.method_combo_box = WidgetTool.getComboInput(self, "method:",
+                                                                             self.methods,
+                                                                             )
+        self.method_combo_box.setCurrentText(self.method)
+        apply_button = QPushButton("&Apply")
+        apply_button.clicked.connect(self.on_apply_button_clicked)
+        layer_layout = QHBoxLayout()
+        point_layout = QHBoxLayout()
+        method_layout = QHBoxLayout()
+        button_layout = QHBoxLayout()
+
+        layer_layout.addWidget(input_layer_label)
+        layer_layout.addWidget(self.input_layer_combo_box)
+        point_layout.addWidget(point_layer_label)
+        point_layout.addWidget(self.point_layer_combo_box)
+        method_layout.addWidget(method_layer_label)
+        method_layout.addWidget(self.method_combo_box)
+        button_layout.addWidget(apply_button)
+
+        main_layout.addLayout(layer_layout)
+        main_layout.addLayout(point_layout)
+        main_layout.addLayout(method_layout)
+        main_layout.addLayout(button_layout)
+
+        self.setLayout(main_layout)
+
+
+    def on_apply_button_clicked(self):
+        text = self.input_layer_combo_box.currentText()
+        self.input_layer = self.napari_util.getLayerWithName(text)
+        text = self.point_layer_combo_box.currentText()
+        point_layer = self.napari_util.getLayerWithName(text)
+        method = self.method_combo_box.currentText()
+        self.tracer = BrightestPathTracing(self.input_layer.data, point_layer.data)
+        self.tracer.method_text = method
+        worker = create_worker(self.tracer.run,
+                               _progress={'desc': 'Hamilton-Jacobi Skeletonizing...'}
+                               )
+        worker.finished.connect(self.on_tracer_finished)
+        worker.start()
+
+
+    def on_tracer_finished(self):
+        name = self.input_layer.name + " traces"
+        self.viewer.add_labels(
+            self.tracer.result,
             name=name,
             scale=self.input_layer.scale,
             units=self.input_layer.units,

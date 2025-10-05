@@ -187,4 +187,3 @@ class MeijeringFilter(RidgeFilter):
                            alpha=self.alpha,
                            black_ridges=self.black_ridges,
                            mode=self.mode)
-
