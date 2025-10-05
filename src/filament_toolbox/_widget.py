@@ -1613,10 +1613,14 @@ class PixelClassifierWidget(ToolboxWidget):
         self.sigma_min = 1
         self.sigma_max = 16
         self.num_sigma = None
+        self.estimators = 50
+        self.max_depth = 10
         self.sigma_min_input = None
         self.sigma_max_input = None
         self.num_sigma_input = None
         self.pixelClassifier = None
+        self.estimators_input = None
+        self.max_depth_input = None
         self.create_layout()
         self.image_combo_boxes.append(self.input_layer_combo_box)
         self.point_combo_boxes.append(self.point_layer_combo_box)
@@ -1653,6 +1657,14 @@ class PixelClassifierWidget(ToolboxWidget):
         classify_button = QPushButton("&Classify")
         classify_button.clicked.connect(self.on_classify_button_clicked)
 
+        estimators_label, self.estimators_input = WidgetTool.getLineInput(self, "estimators:",
+                                                                        self.estimators,
+                                                                        self.field_width,
+                                                                        self.estimators_changed)
+        max_depth_label, self.max_depth_input = WidgetTool.getLineInput(self, "max. depth:",
+                                                                          self.max_depth,
+                                                                          self.field_width,
+                                                                          self.max_depth_changed)
         layer_layout = QHBoxLayout()
         point_layout = QHBoxLayout()
         checkboxes_layout = QVBoxLayout()
@@ -1660,6 +1672,8 @@ class PixelClassifierWidget(ToolboxWidget):
         sigma_max_layout = QHBoxLayout()
         num_sigma_layout = QHBoxLayout()
         button_layout = QVBoxLayout()
+        estimators_layout = QHBoxLayout()
+        max_depth_layout = QHBoxLayout()
 
         layer_layout.addWidget(input_layer_label)
         layer_layout.addWidget(self.input_layer_combo_box)
@@ -1676,6 +1690,10 @@ class PixelClassifierWidget(ToolboxWidget):
         num_sigma_layout.addWidget(self.num_sigma_input)
         button_layout.addWidget(train_button)
         button_layout.addWidget(classify_button)
+        estimators_layout.addWidget(estimators_label)
+        estimators_layout.addWidget(self.estimators_input)
+        max_depth_layout.addWidget(max_depth_label)
+        max_depth_layout.addWidget(self.max_depth_input)
 
         main_layout.addLayout(layer_layout)
         main_layout.addLayout(point_layout)
@@ -1684,11 +1702,21 @@ class PixelClassifierWidget(ToolboxWidget):
         main_layout.addLayout(sigma_max_layout)
         main_layout.addLayout(num_sigma_layout)
         main_layout.addLayout(button_layout)
+        main_layout.addLayout(estimators_layout)
+        main_layout.addLayout(max_depth_layout)
 
         self.setLayout(main_layout)
 
 
     def sigma_changed(self):
+        pass
+
+
+    def estimators_changed(self):
+        pass
+
+
+    def max_depth_changed(self):
         pass
 
 
@@ -1707,6 +1735,9 @@ class PixelClassifierWidget(ToolboxWidget):
             num_sigma = None
         else:
             num_sigma = int(num_sigma)
+        estimators = int(self.estimators_input.text().strip())
+        max_depth = int(self.max_depth_input.text().strip())
+
         self.pixelClassifier = RandomForestPixelClassifier(self.input_layer.data)
         self.pixelClassifier.training_points = point_layer.data
         self.pixelClassifier.training_points_classes = [str(e) for e in point_layer.face_color]
@@ -1716,6 +1747,8 @@ class PixelClassifierWidget(ToolboxWidget):
         self.pixelClassifier.sigma_min = sigma_min
         self.pixelClassifier.sigma_max = sigma_max
         self.pixelClassifier.num_sigma = num_sigma
+        self.pixelClassifier.n_estimators = estimators
+        self.pixelClassifier.max_depth = max_depth
         worker = create_worker(self.pixelClassifier.train,
                                _progress={'desc': 'Training Pixel Classifier...'}
                                )

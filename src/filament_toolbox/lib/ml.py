@@ -58,5 +58,10 @@ class RandomForestPixelClassifier(object):
         points = self.training_points
         self.training_labels = np.zeros(self.image.shape, np.uint8)
         classes = list(set(self.training_points_classes))
-        for index, p in enumerate(points):
-            self.training_labels[np.round(p).astype(int)] = classes.index(self.training_points_classes[index]) + 1
+        if self.image.ndim == 2:
+            for index, (y, x) in enumerate(points):
+                self.training_labels[int(round(y))][int(round(x))] = classes.index(self.training_points_classes[index]) + 1
+        if self.image.ndim == 3:
+            for index, (z, y, x) in enumerate(points):
+                self.training_labels[int(round(z))][int(round(y))][int(round(x))] = classes.index(self.training_points_classes[index]) + 1
+
