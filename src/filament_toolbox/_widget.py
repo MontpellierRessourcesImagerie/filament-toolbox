@@ -28,6 +28,7 @@ from filament_toolbox.lib.morphology import Dilation, Closing, Label, RemoveSmal
 from filament_toolbox.lib.morphology import HamiltonJacobiSkeleton
 from filament_toolbox.lib.ml import RandomForestPixelClassifier
 from filament_toolbox.lib.tracing import BrightestPathTracing
+from filament_toolbox.lib.metric import Dice, CenterlineDice
 
 if TYPE_CHECKING:
     import napari
@@ -1878,3 +1879,87 @@ class BrightestPathTracingWidget(ToolboxWidget):
             units=self.input_layer.units,
             blending='additive'
         )
+        
+        
+        
+class MetricsWidget(ToolboxWidget):
+    
+    
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer)
+        self.labels1_layer = None
+        self.labels2_layer = None
+        self.labels1_combo_box = None
+        self.labels2_combo_box = None
+        self.metrics = {'Dice': Dice, 'clDice': CenterlineDice}
+        self.checked = {'Dice': True, 'clDice': True}
+        self.metrics_checkboxes = {}
+        self.create_layout()
+        self.label_combo_boxes.append(self.labels1_combo_box)
+        self.label_combo_boxes.append(self.labels2_combo_box)
+        self.table = {}
+        self.results = {}
+
+
+    def create_layout(self):
+        main_layout = QVBoxLayout()
+        labels1_label, self.labels1_combo_box = WidgetTool.getComboInput(self, "labels 1:",
+                                                                                 self.label_layers,
+                                                                                 )
+        labels2_label, self.labels2_combo_box = WidgetTool.getComboInput(self, "labels 2:",
+                                                                                 self.label_layers,
+                                                                                 )
+        for key, value in self.checked.items():
+            cb = QCheckBox(key)
+            cb.setChecked(value)
+            self.metrics_checkboxes[key] = cb
+        apply_button = QPushButton("&Apply")
+        apply_button.clicked.connect(self.on_apply_button_clicked)
+        labels1_layout = QHBoxLayout()
+        labels2_layout = QHBoxLayout()
+        checkboxes_layout = QVBoxLayout()
+        button_layout = QHBoxLayout()
+        labels1_layout.addWidget(labels1_label)
+        labels1_layout.addWidget(self.labels1_combo_box)
+        labels2_layout.addWidget(labels2_label)
+        labels2_layout.addWidget(self.labels2_combo_box)
+        for cb in self.metrics_checkboxes.values():
+            checkboxes_layout.addWidget(cb)
+        button_layout.addWidget(apply_button)
+        main_layout.addLayout(labels1_layout)
+        main_layout.addLayout(labels2_layout)
+        main_layout.addLayout(checkboxes_layout)
+        checkboxes_layout.addLayout(button_layout)
+        self.setLayout(main_layout)
+
+
+    def on_apply_button_clicked(self):
+        for key, cb in self.metrics_checkboxes.items():
+            self.checked[key] = cb.isChecked()
+        self.calculate_metrics()
+        if "Metrics" in self.viewer.window.dock_widgets.keys():
+            self.viewer.window.remove_dock_widget(self.viewer.window.dock_widgets["Metrics"])
+            self.viewer.window.dock_widgets["Metrics"].close()
+        self.viewer.window.add_dock_widget(TableView(self.results), name="Metrics")
+
+
+    def calculate_metrics(self):
+        text = self.labels1_combo_box.currentText()
+        self.labels1_layer = self.napari_util.getLayerWithName(text)
+        text = self.labels2_combo_box.currentText()
+        self.labels2_layer = self.napari_util.getLayerWithName(text)
+        if not 'image1' in self.results.keys():
+            self.results['image1'] = []
+        self.results['image1'].append(text)
+        if not 'image2' in self.results.keys():
+            self.results['image2'] = []
+        self.results['image2'].append(text)
+        for key, value in self.checked.items():
+            if value:
+                metric_class = self.metrics[key]
+                metric = metric_class(self.labels1_layer.data, self.labels2_layer.data)
+                metric.calculate()
+                if not key in self.results.keys():
+                    self.results[key] = []
+                self.results[key].append(metric.result)
+

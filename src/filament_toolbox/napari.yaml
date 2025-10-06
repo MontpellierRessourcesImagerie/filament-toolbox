@@ -48,6 +48,9 @@ contributions:
     - id: filament-toolbox.meijering_filter
       python_name: filament_toolbox:MeijeringFilterWidget
       title: Meijering Filter
+    - id: filament-toolbox.metrics_calculation
+      python_name: filament_toolbox:MetricsWidget
+      title: Metrics Calculation
     - id: filament-toolbox.pixel_classifier
       python_name: filament_toolbox:PixelClassifierWidget
       title: Pixel Classifier
@@ -105,6 +108,8 @@ contributions:
       display_name: Median Filter
     - command: filament-toolbox.meijering_filter
       display_name: Meijering Filter
+    - command: filament-toolbox.metrics_calculation
+      display_name: Metrics Calculation
     - command: filament-toolbox.pixel_classifier
       display_name: Pixel Classifier
     - command: filament-toolbox.remove_small_objects
@@ -145,6 +150,7 @@ contributions:
       - command: filament-toolbox.brightest_path_tracing
     napari/layers/measure:
       - command: filament-toolbox.measure_skeleton
+      - command: filament-toolbox.metrics_calculation
     napari/layers/segment:
       - submenu: threshold
       - command: filament-toolbox.clear_border

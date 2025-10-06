@@ -38,6 +38,7 @@ dependencies = [
     "pyperclip",
     "set-calibration",
     "brightest-path-lib",
+    "napari-skimage-regionprops",
 ]
 
 [project.optional-dependencies]
