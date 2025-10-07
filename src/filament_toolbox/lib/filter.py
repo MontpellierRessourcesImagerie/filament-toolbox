@@ -68,8 +68,13 @@ class GaussianFilter(Filter):
         self.sigma = (1.3, 1.3, 1.3)
 
 
+    def get_sigma(self):
+        if self.image.ndim == 2:
+            return self.sigma[1:]
+
+
     def run(self):
-        self.result = gaussian_filter(self.image, self.sigma, mode=self.mode)
+        self.result = gaussian_filter(self.image, self.get_sigma(), mode=self.mode)
 
 
 

@@ -3,6 +3,7 @@ from skimage.morphology import binary_dilation, remove_small_objects
 from filament_toolbox.lib.filter import FilterWithSE, Filter
 from skimage.morphology import binary_closing, skeletonize
 from skimage.measure import label
+from scipy.ndimage import distance_transform_edt
 from pyhjs import PyHJS, BinaryFrame
 import cv2
 
@@ -147,3 +148,15 @@ class HamiltonJacobiSkeleton(Filter):
         for contour in contours:
             contour_mask[contour[:, 0, 1], contour[:, 0, 0]] = 255
         return contour_mask
+
+
+
+class EuclideanDistanceTransform(Filter):
+
+
+    def __init__(self, image):
+        super().__init__(image)
+
+
+    def run(self):
+        self.result = distance_transform_edt(self.image)

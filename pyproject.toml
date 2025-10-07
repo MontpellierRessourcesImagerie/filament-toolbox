@@ -39,6 +39,7 @@ dependencies = [
     "set-calibration",
     "brightest-path-lib",
     "napari-skimage-regionprops",
+    "napari-plot-profile",
 ]
 
 [project.optional-dependencies]

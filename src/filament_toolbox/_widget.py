@@ -25,7 +25,7 @@ from filament_toolbox.lib.filter import MedianFilter, GaussianFilter, Anisotropi
 from filament_toolbox.lib.filter import FrangiFilter, SatoFilter, MeijeringFilter
 from filament_toolbox.lib.segmentation import Threshold, ClearBorder
 from filament_toolbox.lib.morphology import Dilation, Closing, Label, RemoveSmallObjects, Skeletonize
-from filament_toolbox.lib.morphology import HamiltonJacobiSkeleton
+from filament_toolbox.lib.morphology import HamiltonJacobiSkeleton, EuclideanDistanceTransform
 from filament_toolbox.lib.ml import RandomForestPixelClassifier
 from filament_toolbox.lib.tracing import BrightestPathTracing
 from filament_toolbox.lib.metric import Dice, CenterlineDice
@@ -1864,7 +1864,7 @@ class BrightestPathTracingWidget(ToolboxWidget):
         self.tracer = BrightestPathTracing(self.input_layer.data, point_layer.data)
         self.tracer.method_text = method
         worker = create_worker(self.tracer.run,
-                               _progress={'desc': 'Hamilton-Jacobi Skeletonizing...'}
+                               _progress={'desc': 'Brightest Path Tracing...'}
                                )
         worker.finished.connect(self.on_tracer_finished)
         worker.start()
@@ -1963,3 +1963,53 @@ class MetricsWidget(ToolboxWidget):
                     self.results[key] = []
                 self.results[key].append(metric.result)
 
+
+class EuclideanDistanceTransformWidget(ToolboxWidget):
+    
+    
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer)
+        self.create_layout()
+        self.label_combo_boxes.append(self.label_layer_combo_box)
+
+
+    def create_layout(self):
+        main_layout = QVBoxLayout()
+        input_layer_label, self.label_layer_combo_box = WidgetTool.getComboInput(self, "image:",
+                                                                                 self.label_layers,
+                                                                                 )
+        apply_button = QPushButton("&Apply")
+        apply_button.clicked.connect(self.on_apply_button_clicked)
+        layer_layout = QHBoxLayout()
+        button_layout = QHBoxLayout()
+
+        layer_layout.addWidget(input_layer_label)
+        layer_layout.addWidget(self.label_layer_combo_box)
+        button_layout.addWidget(apply_button)
+
+        main_layout.addLayout(layer_layout)
+        main_layout.addLayout(button_layout)
+
+        self.setLayout(main_layout)
+
+
+    def on_apply_button_clicked(self):
+        text = self.label_layer_combo_box.currentText()
+        self.input_layer = self.napari_util.getLayerWithName(text)
+        self.filter = EuclideanDistanceTransform(self.input_layer.data)
+        worker = create_worker(self.filter.run,
+                               _progress={'desc': 'Calculating the Euclidean Distance Transform...'}
+                               )
+        worker.finished.connect(self.on_filter_finished)
+        worker.start()
+
+
+    def on_filter_finished(self):
+        name = self.input_layer.name + " edt"
+        self.viewer.add_image(
+            self.filter.result,
+            name=name,
+            scale=self.input_layer.scale,
+            units=self.input_layer.units,
+            blending='additive'
+        )

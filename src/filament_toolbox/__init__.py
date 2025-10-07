@@ -33,6 +33,7 @@ from ._widget import (
     measure_skeleton,
     BrightestPathTracingWidget,
     MetricsWidget,
+    EuclideanDistanceTransformWidget,
 )
 
 
@@ -61,6 +62,7 @@ __all__ = (
     "measure_skeleton",
     "BrightestPathTracingWidget",
     "MetricsWidget",
+    "EuclideanDistanceTransformWidget",
 )
 
 

@@ -24,5 +24,9 @@ class BrightestPathTracing(object):
             end = self.points[index + 1]
             algorithm = method(self.image, start, end)
             path = algorithm.search()
-            for z, y, x in path:
-                self.result[z][y][x] = index + 1
+            if self.image.ndim == 2:
+                for y, x in path:
+                    self.result[y][x] = index + 1
+            else:
+                for z, y, x in path:
+                    self.result[z][y][x] = index + 1

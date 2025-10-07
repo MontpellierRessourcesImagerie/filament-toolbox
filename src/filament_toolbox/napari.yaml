@@ -27,6 +27,9 @@ contributions:
     - id: filament-toolbox.dilate
       python_name: filament_toolbox:DilationWidget
       title: Dilate
+    - id: filament-toolbox.edt
+      python_name: filament_toolbox:EuclideanDistanceTransformWidget
+      title: Euclidean Distance Transform
     - id: filament-toolbox.frangi_filter
       python_name: filament_toolbox:FrangiFilterWidget
       title: Frangi Filter
@@ -96,6 +99,8 @@ contributions:
       display_name: Close
     - command: filament-toolbox.dilate
       display_name: Dilate
+    - command: filament-toolbox.edt
+      display_name: Euclidean Distance Transform
     - command: filament-toolbox.frangi_filter
       display_name: Frangi Filter
     - command: filament-toolbox.gaussian_filter
@@ -137,6 +142,7 @@ contributions:
     morphology:
       - command: filament-toolbox.close
       - command: filament-toolbox.dilate
+      - command: filament-toolbox.edt
       - command: filament-toolbox.label
       - command: filament-toolbox.remove_small_objects
     noise:
