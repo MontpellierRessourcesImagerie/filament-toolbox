@@ -1,11 +1,15 @@
 import numpy as np
+import cv2
 from skimage.morphology import binary_dilation, remove_small_objects
 from filament_toolbox.lib.filter import FilterWithSE, Filter
 from skimage.morphology import binary_closing, skeletonize
 from skimage.measure import label
 from scipy.ndimage import distance_transform_edt
-from pyhjs import PyHJS, BinaryFrame
-import cv2
+try:
+    from pyhjs import PyHJS, BinaryFrame
+except Exception as e:
+    print(f"Could not import PyHJS: {e}")
+
 
 
 class Dilation(FilterWithSE):
