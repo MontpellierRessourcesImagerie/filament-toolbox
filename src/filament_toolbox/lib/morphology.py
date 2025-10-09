@@ -5,6 +5,7 @@ from filament_toolbox.lib.filter import FilterWithSE, Filter
 from skimage.morphology import binary_closing, skeletonize
 from skimage.measure import label
 from scipy.ndimage import distance_transform_edt
+import localthickness as lt
 try:
     from pyhjs import PyHJS, BinaryFrame
 except Exception as e:
@@ -164,3 +165,20 @@ class EuclideanDistanceTransform(Filter):
 
     def run(self):
         self.result = distance_transform_edt(self.image)
+
+
+
+class LocalThickness(Filter):
+
+
+    def __init__(self, image):
+        super().__init__(image)
+        self.scale = 0.5
+        self.histogram = None
+
+
+    def run(self):
+        self.result = lt.local_thickness(self.image, scale=self.scale)
+
+
+

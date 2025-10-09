@@ -34,6 +34,8 @@ from ._widget import (
     BrightestPathTracingWidget,
     MetricsWidget,
     EuclideanDistanceTransformWidget,
+    LocalThicknessWidget,
+    MeasureLabels,
 )
 
 
@@ -63,6 +65,8 @@ __all__ = (
     "BrightestPathTracingWidget",
     "MetricsWidget",
     "EuclideanDistanceTransformWidget",
+    "LocalThicknessWidget",
+    "MeasureLabels",
 )
 
 

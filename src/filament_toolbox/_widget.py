@@ -17,7 +17,7 @@ from skimage.color import rgb2gray
 from napari.utils.events import Event
 from napari.qt.threading import create_worker
 from napari.utils import notifications
-
+from skimage.measure import regionprops_table
 from filament_toolbox.lib.measure import MeasureSkeleton
 from filament_toolbox.lib.qtutil import WidgetTool, TableView
 from filament_toolbox.lib.napari_util import NapariUtil
@@ -25,10 +25,11 @@ from filament_toolbox.lib.filter import MedianFilter, GaussianFilter, Anisotropi
 from filament_toolbox.lib.filter import FrangiFilter, SatoFilter, MeijeringFilter
 from filament_toolbox.lib.segmentation import Threshold, ClearBorder
 from filament_toolbox.lib.morphology import Dilation, Closing, Label, RemoveSmallObjects, Skeletonize
-from filament_toolbox.lib.morphology import HamiltonJacobiSkeleton, EuclideanDistanceTransform
+from filament_toolbox.lib.morphology import HamiltonJacobiSkeleton, EuclideanDistanceTransform, LocalThickness
 from filament_toolbox.lib.ml import RandomForestPixelClassifier
 from filament_toolbox.lib.tracing import BrightestPathTracing
 from filament_toolbox.lib.metric import Dice, CenterlineDice
+
 
 if TYPE_CHECKING:
     import napari
@@ -2012,4 +2013,215 @@ class EuclideanDistanceTransformWidget(ToolboxWidget):
             scale=self.input_layer.scale,
             units=self.input_layer.units,
             blending='additive'
+        )
+
+
+
+class LocalThicknessWidget(ToolboxWidget):
+
+
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer)
+        self.scale = 0.5
+        self.scale_input = None
+        self.create_layout()
+        self.label_combo_boxes.append(self.label_layer_combo_box)
+
+
+    def create_layout(self):
+        main_layout = QVBoxLayout()
+        input_layer_label, self.label_layer_combo_box = WidgetTool.getComboInput(self, "image:",
+                                                                                 self.label_layers,
+                                                                                 )
+        scale_label, self.scale_input = WidgetTool.getLineInput(self, "scale:",
+                                                                          self.scale,
+                                                                          self.field_width,
+                                                                          self.scale_changed)
+        apply_button = QPushButton("&Apply")
+        apply_button.clicked.connect(self.on_apply_button_clicked)
+        layer_layout = QHBoxLayout()
+        scale_layout = QHBoxLayout()
+        button_layout = QHBoxLayout()
+
+        layer_layout.addWidget(input_layer_label)
+        layer_layout.addWidget(self.label_layer_combo_box)
+        scale_layout.addWidget(scale_label)
+        scale_layout.addWidget(self.scale_input)
+        button_layout.addWidget(apply_button)
+
+        main_layout.addLayout(layer_layout)
+        main_layout.addLayout(scale_layout)
+        main_layout.addLayout(button_layout)
+
+        self.setLayout(main_layout)
+
+
+    def scale_changed(self):
+        pass
+
+
+    def on_apply_button_clicked(self):
+        text = self.label_layer_combo_box.currentText()
+        self.input_layer = self.napari_util.getLayerWithName(text)
+        scale = float(self.scale_input.text().strip())
+        self.filter = LocalThickness(self.input_layer.data)
+        worker = create_worker(self.filter.run,
+                               _progress={'desc': 'Calculating Local Thickness...'}
+                               )
+        worker.finished.connect(self.on_filter_finished)
+        worker.start()
+
+
+    def on_filter_finished(self):
+        name = self.input_layer.name + " thickness"
+        self.viewer.add_image(
+            self.filter.result,
+            name=name,
+            scale=self.input_layer.scale,
+            units=self.input_layer.units,
+            blending='additive',
+            colormap='inferno'
+        )
+
+
+
+class MeasureLabels(ToolboxWidget):
+
+
+    def __init__(self):
+        super().__init__(napari.current_viewer())
+        self.labels_layer = None
+        self.create_layout()
+        self.label_combo_boxes.append(self.label_layer_combo_box)
+        self.image_combo_boxes.append(self.input_layer_combo_box)
+
+
+
+    def create_layout(self):
+        main_layout = QVBoxLayout()
+        label_layer_label, self.label_layer_combo_box = WidgetTool.getComboInput(self, "labels:",
+                                                                                 self.label_layers,
+                                                                                 )
+        input_layer_label, self.input_layer_combo_box = WidgetTool.getComboInput(self, "image:",
+                                                                                 self.image_layers,
+                                                                                 )
+        apply_button = QPushButton("&Apply")
+        apply_button.clicked.connect(self.on_apply_button_clicked)
+        input_layer_layout = QHBoxLayout()
+        labels_layer_layout = QHBoxLayout()
+        button_layout = QHBoxLayout()
+        input_layer_layout.addWidget(label_layer_label)
+        input_layer_layout.addWidget(self.label_layer_combo_box)
+        labels_layer_layout.addWidget(input_layer_label)
+        labels_layer_layout.addWidget(self.input_layer_combo_box)
+        button_layout.addWidget(apply_button)
+
+        main_layout.addLayout(input_layer_layout)
+        main_layout.addLayout(labels_layer_layout)
+        main_layout.addLayout(button_layout)
+
+        self.setLayout(main_layout)
+
+
+    def on_apply_button_clicked(self):
+        text = self.input_layer_combo_box.currentText()
+        self.input_layer = None
+        props = self.get_form_properties()
+        self.input_layer = self.napari_util.getLayerWithName(text)
+        input_data = None
+        if self.input_layer:
+            props = self.get_all_properties()
+            input_data = self.input_layer.data
+        text = self.label_layer_combo_box.currentText()
+        self.labels_layer = self.napari_util.getLayerWithName(text)
+
+        table = regionprops_table(self.labels_layer.data,
+                                  properties=props,
+                                  intensity_image=input_data,
+                                  spacing=self.labels_layer.scale)
+        self.viewer.window.add_dock_widget(TableView(table))
+
+
+    @classmethod
+    def get_form_properties(self):
+        return (
+            'label',
+            'area',
+            'area_bbox',
+            'area_convex',
+            'area_filled',
+            'axis_major_length',
+            'axis_minor_length',
+            'bbox',
+            'centroid',
+            'centroid_local',
+#            'coords',
+            'eccentricity',
+            'equivalent_diameter_area',
+            'euler_number',
+            'extent',
+            'feret_diameter_max',
+#           'image',
+#           'image_convex',
+#           'image_filled',
+#            'inertia_tensor',
+#            'inertia_tensor_eigvals',
+            'label',
+            'moments',
+            'moments_central',
+            'moments_hu',
+            'moments_normalized',
+            'orientation',
+            'perimeter',
+            'perimeter_crofton',
+            'slice',
+            'solidity'
+        )
+
+
+    @classmethod
+    def get_all_properties(self):
+        return (
+            'label',
+            'area',
+            'area_bbox',
+            'area_convex',
+            'area_filled',
+            'axis_major_length',
+            'axis_minor_length',
+            'bbox',
+            'centroid',
+            'centroid_local',
+            'centroid_weighted',
+            'centroid_weighted_local',
+#            'coords',
+            'eccentricity',
+            'equivalent_diameter_area',
+            'euler_number',
+            'extent',
+            'feret_diameter_max',
+#           'image',
+#            'image_convex',
+#            'image_filled',
+#            'image_intensity',
+#            'inertia_tensor',
+#            'inertia_tensor_eigvals',
+            'intensity_max',
+            'intensity_mean',
+            'intensity_min',
+            'intensity_std',
+            'label',
+            'moments',
+            'moments_central',
+            'moments_hu',
+            'moments_normalized',
+            'moments_weighted',
+            'moments_weighted_central',
+            'moments_weighted_hu',
+            'moments_weighted_normalized',
+            'orientation',
+            'perimeter',
+            'perimeter_crofton',
+            'slice',
+            'solidity'
         )

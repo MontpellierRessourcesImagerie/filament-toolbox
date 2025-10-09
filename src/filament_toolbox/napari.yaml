@@ -42,6 +42,9 @@ contributions:
     - id: filament-toolbox.label
       python_name: filament_toolbox:LabelWidget
       title: Label
+    - id: filament-toolbox.local_thickness
+      python_name: filament_toolbox:LocalThicknessWidget
+      title: Local Thickness
     - id: filament-toolbox.measure_skeleton
       python_name: filament_toolbox:measure_skeleton
       title: Measure Skeleton
@@ -66,6 +69,9 @@ contributions:
     - id: filament-toolbox.rgb_to_16bit
       python_name: filament_toolbox:rgb_to_16bit
       title: rgb to 16bit
+    - id: filament-toolbox.measure_labels
+      python_name: filament_toolbox:MeasureLabels
+      title: Measure Labels
     - id: filament-toolbox.rolling_ball
       python_name: filament_toolbox:RollingBallWidget
       title: Background Subtraction
@@ -109,6 +115,10 @@ contributions:
       display_name: Hamilton-Jacobi Skeletonize
     - command: filament-toolbox.label
       display_name: Label
+    - command: filament-toolbox.local_thickness
+      display_name: Local Thickness
+    - command: filament-toolbox.measure_labels
+      display_name: Measure Labels
     - command: filament-toolbox.median_filter
       display_name: Median Filter
     - command: filament-toolbox.meijering_filter
@@ -144,6 +154,7 @@ contributions:
       - command: filament-toolbox.dilate
       - command: filament-toolbox.edt
       - command: filament-toolbox.label
+      - command: filament-toolbox.local_thickness
       - command: filament-toolbox.remove_small_objects
     noise:
       - command: filament-toolbox.anisotropic_diffusion_filter
@@ -157,6 +168,7 @@ contributions:
     napari/layers/measure:
       - command: filament-toolbox.measure_skeleton
       - command: filament-toolbox.metrics_calculation
+      - command: filament-toolbox.measure_labels
     napari/layers/segment:
       - submenu: threshold
       - command: filament-toolbox.clear_border
