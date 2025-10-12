@@ -16,7 +16,7 @@ class MeasureSkeleton(object):
 
     def run(self):
         skeleton = Skeleton(self.image, spacing=self.scale)
-        branch_data = summarize(skeleton, separator='_')
+        branch_data = summarize(skeleton, separator='_', find_main_branch=True)
         self.result = {}
         for key, value in branch_data.items():
             self.result[key] = value.values
