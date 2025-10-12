@@ -172,7 +172,7 @@ class LocalThickness(Filter):
 
 
     def __init__(self, image):
-        super().__init__(image)
+        super().__init__(image > 0)
         self.scale = 0.5
         self.histogram = None
 
