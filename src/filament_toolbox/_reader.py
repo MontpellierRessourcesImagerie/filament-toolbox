@@ -6,11 +6,7 @@ implement multiple readers or even other plugin contributions. see:
 https://napari.org/stable/plugins/building_a_plugin/guides.html#readers
 """
 
-import numpy as np
-from vispy.util.transforms import scale
-
 from filament_toolbox.lib.swc import SWCForest
-
 
 
 def napari_get_reader(path):

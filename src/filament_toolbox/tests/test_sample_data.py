@@ -4,4 +4,4 @@
 
 
 def test_something():
-    pass
+    assert True

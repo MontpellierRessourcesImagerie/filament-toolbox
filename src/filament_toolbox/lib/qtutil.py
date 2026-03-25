@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING
 import pyperclip
 import numpy as np
 import matplotlib.pyplot as plt
-from PyQt5.QtWidgets import QHBoxLayout
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
 from qtpy.QtWidgets import QLabel, QLineEdit, QComboBox, QTableWidget, QTableWidgetItem, QAction

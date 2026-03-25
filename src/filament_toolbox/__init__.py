@@ -1,7 +1,3 @@
-import napari
-
-import filament_toolbox
-
 try:
     from ._version import version as __version__
 except ImportError:
@@ -70,8 +66,3 @@ __all__ = (
 )
 
 
-@napari.Viewer.bind_key('t')
-def toggle_widget(param):
-    print(param)
-    viewer = napari.current_viewer()
-    viewer.window.add_dock_widget(ThresholdWidget(viewer))
