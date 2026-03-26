@@ -71,6 +71,7 @@ class GaussianFilter(Filter):
     def get_sigma(self):
         if self.image.ndim == 2:
             return self.sigma[1:]
+        return self.sigma
 
 
     def run(self):
