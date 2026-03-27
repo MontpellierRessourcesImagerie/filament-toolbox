@@ -102,7 +102,7 @@ class AnisotropicDiffusionFilter(Filter):
     def run(self):
         normalizedImage = self.image
         if not self.image.dtype.kind == 'f':
-            copiedImage = self.image.astype(np.float64)
+            copiedImage = self.image.astype(np.float64, copy=True)
             normalizedImage = copiedImage / np.iinfo(self.image.dtype).max
         self.result = anisotropic_diffusion(normalizedImage,
                               niter=self.niter,
