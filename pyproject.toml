@@ -36,6 +36,7 @@ dependencies = [
     "scikit-learn",
     "skan",
     "opencv-python",
+    "medpy",
     "pyperclip",
     "set-calibration",
     "brightest-path-lib",

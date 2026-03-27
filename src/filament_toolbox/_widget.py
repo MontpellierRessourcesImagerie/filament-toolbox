@@ -385,7 +385,7 @@ class AnisotropicDiffusionFilterWidget(ToolboxWidget):
         self.gamma_input = None
         self.step_xy_input = None
         self.step_z_input = None
-        self.options = ["favour high contrast edges", "favour wide regions"]
+        self.options = ["favour high contrast edges", "favour wide regions", "Tukey’s biweight function"]
         self.options_combo_box = None
         self.create_layout()
         self.image_combo_boxes.append(self.input_layer_combo_box)

@@ -1,10 +1,12 @@
 import os
 from abc import abstractmethod
+
+import numpy as np
 from scipy.ndimage import median_filter
 from scipy.ndimage import gaussian_filter
 from skimage.restoration import rolling_ball
 from skimage.filters.ridges import frangi, sato, meijering
-from filament_toolbox.lib.ext.fastaniso import anisodiff, anisodiff3
+from medpy.filter.smoothing import anisotropic_diffusion
 
 
 
@@ -98,20 +100,16 @@ class AnisotropicDiffusionFilter(Filter):
 
 
     def run(self):
-        if self.image.ndim == 2:
-            self.result = anisodiff(self.image,
-                      niter=self.niter,
-                      kappa=self.kappa,
-                      gamma=self.gamma,
-                      step=self.get_step(),
-                      option=self.option)
-        else:
-            self.result = anisodiff3(self.image,
-                      niter=self.niter,
-                      kappa=self.kappa,
-                      gamma=self.gamma,
-                      step=self.get_step(),
-                      option=self.option)
+        normalizedImage = self.image
+        if not self.image.dtype.kind == 'f':
+            copiedImage = self.image.astype(np.float64)
+            normalizedImage = copiedImage / np.iinfo(self.image.dtype).max
+        self.result = anisotropic_diffusion(normalizedImage,
+                              niter=self.niter,
+                              kappa=self.kappa,
+                              gamma=self.gamma,
+                              voxelspacing=self.get_step(),
+                              option=self.option)
 
 
 
