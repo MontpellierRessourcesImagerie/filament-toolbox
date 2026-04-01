@@ -42,7 +42,7 @@ jobs:
       - uses: tlambert03/setup-qt-libs@v1
 
       - name: Install Windows OpenGL
-        uses: pyvista/setup-headless-display-action@v4.2
+        uses: pyvista/setup-headless-display-action@v4.3
         with:
           qt: true
           wm: herbstluftwm
@@ -64,7 +64,7 @@ jobs:
           PLATFORM: ${{ matrix.platform }}
 
       - name: Coverage
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
 
   deploy:
     # this will run when you have tagged a commit, starting with "v*"
