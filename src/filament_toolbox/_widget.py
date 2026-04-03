@@ -1,11 +1,14 @@
 """
 This module contains the tools of the filament-toolbox
 """
+from abc import abstractmethod, ABC
 from codecs import namereplace_errors
 from typing import TYPE_CHECKING
 
 import numpy as np
 import napari
+from autooptions import Options
+from autooptions import OptionsWidget
 from napari.layers import Image, Labels
 from numba.core.types import uint16, uint32
 from qtpy.QtWidgets import QPushButton, QWidget
@@ -97,6 +100,52 @@ def str_to_number(s):
             return None
 
 
+class SimpleWidget(QWidget):
+
+
+    def __init__(self, viewer):
+        super().__init__()
+        self.viewer = viewer
+        self.options = self.getOptions()
+        self.widget = None
+        self.operation = None
+        self.imageLayer = None
+        self.createLayout()
+
+
+    def createLayout(self):
+        self.widget = OptionsWidget(self.viewer, self.options, self)
+        self.widget.addApplyButton(self.apply)
+        layout = QVBoxLayout()
+        layout.addWidget(self.widget)
+        self.setLayout(layout)
+
+
+    def displayImage(self, name):
+        self.viewer.add_image(
+            self.operation.result,
+            name=name,
+            scale=self.imageLayer.scale,
+            units=self.imageLayer.units,
+            blending='additive'
+        )
+
+
+    @abstractmethod
+    def getOptions(self):
+        raise Exception("Abstract method getOptions of class SimpleWidget called!")
+
+
+    @abstractmethod
+    def apply(self):
+        raise Exception("Abstract method apply of class SimpleWidget called!")
+
+
+    @abstractmethod
+    def displayResult(self):
+        raise Exception("Abstract method displayResult of class SimpleWidget called!")
+
+
 
 class ToolboxWidget(QWidget):
 
@@ -159,6 +208,48 @@ class ToolboxWidget(QWidget):
             footprint_function = getattr(skimage.morphology, se_name)
             footprint = footprint_function(radius)
         return footprint
+
+
+
+class AnisotropicDiffusionFilterWidget(SimpleWidget):
+
+
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer)
+
+
+    def getOptions(self):
+        options = Options("Filament Toolbox", "anisotropic_diffusion_filter")
+        options.addImage()
+        options.addInt("iterations", value=5)
+        options.addInt("kappa", value=50)
+        options.addFloat("gamma", value=0.1)
+        options.load()
+        return options
+
+
+    def apply(self):
+        self.widget._onApplyButtonClicked()
+        self.imageLayer = self.widget.getImageLayer("image")
+        print('image layer', self.imageLayer)
+        self.operation = AnisotropicDiffusionFilter(self.imageLayer.data)
+        self.operation.iterations = self.options.value('iterations')
+        self.operation.kappa = self.options.value('kappa')
+        self.operation.gamma = self.options.value('gamma')
+        steps = self.imageLayer.scale
+        if len(steps) < 3:
+            steps = (1, steps[0], steps[1])
+        self.operation.step = steps
+        worker = create_worker(self.operation.run,
+                               _progress={'desc': 'Applying Anisotropic Diffusion Filter...'}
+                               )
+        worker.finished.connect(self.displayResult)
+        worker.start()
+
+
+    def displayResult(self):
+        name = self.imageLayer.name + " anisodiff"
+        self.displayImage(name)
 
 
 
@@ -358,142 +449,6 @@ class GaussianFilterWidget(ToolboxWidget):
 
     def on_filter_finished(self):
         name = self.input_layer.name + " gaussian"
-        self.viewer.add_image(
-            self.filter.result,
-            name=name,
-            scale=self.input_layer.scale,
-            units=self.input_layer.units,
-            blending='additive'
-        )
-
-
-class AnisotropicDiffusionFilterWidget(ToolboxWidget):
-
-
-    def __init__(self, viewer: "napari.viewer.Viewer"):
-        super().__init__(viewer)
-        self.setWindowTitle("Anisotropic Diffusion Filter")
-        self.viewer = viewer
-        self.iterations = 5
-        self.kappa = 50
-        self.gamma = 0.1
-        self.step_xy = 1.
-        self.step_z = 1.
-        self.option = 1
-        self.iterations_input = None
-        self.kappa_input = None
-        self.gamma_input = None
-        self.step_xy_input = None
-        self.step_z_input = None
-        self.options = ["favour high contrast edges", "favour wide regions", "Tukey’s biweight function"]
-        self.options_combo_box = None
-        self.create_layout()
-        self.image_combo_boxes.append(self.input_layer_combo_box)
-
-
-    def create_layout(self):
-        main_layout = QVBoxLayout()
-        input_layer_label, self.input_layer_combo_box = WidgetTool.getComboInput(self, "image:",
-                                                                                 self.image_layers,
-                                                                                 )
-        iterations_label, self.iterations_input = WidgetTool.getLineInput(self, "iterations:",
-                                                            self.iterations,
-                                                            self.field_width,
-                                                            self.iterations_changed)
-        kappa_label, self.kappa_input = WidgetTool.getLineInput(self, "kappa:",
-                                                            self.kappa,
-                                                            self.field_width,
-                                                            self.kappa_changed)
-        gamma_label, self.gamma_input = WidgetTool.getLineInput(self, "gamma:",
-                                                          self.gamma,
-                                                          self.field_width,
-                                                          self.gamma_changed)
-        step_xy_label, self.step_xy_input = WidgetTool.getLineInput(self, "step xy:",
-                                                          self.step_xy,
-                                                          self.field_width,
-                                                          self.step_changed)
-        step_z_label, self.step_z_input = WidgetTool.getLineInput(self, "step z:",
-                                                                    self.step_z,
-                                                                    self.field_width,
-                                                                    self.step_changed)
-        option_label, self.options_combo_box = WidgetTool.getComboInput(self, "equation:",
-                                                                                 self.options,
-                                                                                 )
-        apply_button = QPushButton("&Apply")
-        apply_button.clicked.connect(self.on_apply_button_clicked)
-        layer_layout = QHBoxLayout()
-        iterations_layout = QHBoxLayout()
-        kappa_gamma_layout = QHBoxLayout()
-        step_layout = QHBoxLayout()
-        option_layout = QHBoxLayout()
-        button_layout = QHBoxLayout()
-
-        layer_layout.addWidget(input_layer_label)
-        layer_layout.addWidget(self.input_layer_combo_box)
-        iterations_layout.addWidget(iterations_label)
-        iterations_layout.addWidget(self.iterations_input)
-        kappa_gamma_layout.addWidget(kappa_label)
-        kappa_gamma_layout.addWidget(self.kappa_input)
-        kappa_gamma_layout.addWidget(gamma_label)
-        kappa_gamma_layout.addWidget(self.gamma_input)
-        step_layout.addWidget(step_xy_label)
-        step_layout.addWidget(self.step_xy_input)
-        step_layout.addWidget(step_z_label)
-        step_layout.addWidget(self.step_z_input)
-        option_layout.addWidget(option_label)
-        option_layout.addWidget(self.options_combo_box)
-        button_layout.addWidget(apply_button)
-
-        main_layout.addLayout(layer_layout)
-        main_layout.addLayout(iterations_layout)
-        main_layout.addLayout(kappa_gamma_layout)
-        main_layout.addLayout(step_layout)
-        main_layout.addLayout(option_layout)
-        main_layout.addLayout(button_layout)
-
-        self.setLayout(main_layout)
-
-
-    def iterations_changed(self):
-        pass
-
-
-    def kappa_changed(self):
-        pass
-
-
-    def gamma_changed(self):
-        pass
-
-
-    def step_changed(self):
-        pass
-
-
-    def on_apply_button_clicked(self):
-        text = self.input_layer_combo_box.currentText()
-        self.input_layer = self.napari_util.getLayerWithName(text)
-        iterations = int(self.iterations_input.text().strip())
-        kappa = float(self.kappa_input.text().strip())
-        gamma = float(self.gamma_input.text().strip())
-        step_xy = float(self.step_xy_input.text().strip())
-        step_z = float(self.step_z_input.text().strip())
-        option = self.options_combo_box.currentIndex() + 1
-        self.filter = AnisotropicDiffusionFilter(self.input_layer.data)
-        self.filter.iterations = iterations
-        self.filter.kappa = kappa
-        self.filter.gamma = gamma
-        self.filter.step = (step_z, step_xy, step_xy)
-        self.filter.option = option
-        worker = create_worker(self.filter.run,
-                               _progress={'desc': 'Applying anisotropic diffusion filter...'}
-                               )
-        worker.finished.connect(self.on_filter_finished)
-        worker.start()
-
-
-    def on_filter_finished(self):
-        name = self.input_layer.name + " anisodiff"
         self.viewer.add_image(
             self.filter.result,
             name=name,

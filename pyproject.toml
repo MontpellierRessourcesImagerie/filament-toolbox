@@ -42,6 +42,7 @@ dependencies = [
     "brightest-path-lib",
     "napari-plot-profile",
     "localthickness",
+    "auto-options-python"
 ]
 
 [project.optional-dependencies]
