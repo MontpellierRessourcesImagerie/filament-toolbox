@@ -103,18 +103,19 @@ def str_to_number(s):
 class SimpleWidget(QWidget):
 
 
-    def __init__(self, viewer):
+    def __init__(self, viewer, sameRowMap=None):
         super().__init__()
         self.viewer = viewer
         self.options = self.getOptions()
         self.widget = None
+        self.sameRowMap = sameRowMap
         self.operation = None
         self.imageLayer = None
         self.createLayout()
 
 
     def createLayout(self):
-        self.widget = OptionsWidget(self.viewer, self.options, self)
+        self.widget = OptionsWidget(self.viewer, self.options, client=self, sameRowMap=self.sameRowMap)
         self.widget.addApplyButton(self.apply)
         layout = QVBoxLayout()
         layout.addWidget(self.widget)
@@ -231,7 +232,6 @@ class AnisotropicDiffusionFilterWidget(SimpleWidget):
     def apply(self):
         self.widget._onApplyButtonClicked()
         self.imageLayer = self.widget.getImageLayer("image")
-        print('image layer', self.imageLayer)
         self.operation = AnisotropicDiffusionFilter(self.imageLayer.data)
         self.operation.iterations = self.options.value('iterations')
         self.operation.kappa = self.options.value('kappa')
@@ -371,91 +371,43 @@ class MedianFilterWidget(ToolboxWidget):
 
 
 # noinspection PyTypeChecker
-class GaussianFilterWidget(ToolboxWidget):
+class GaussianFilterWidget(SimpleWidget):
 
 
     def __init__(self, viewer: "napari.viewer.Viewer"):
-        super().__init__(viewer)
-        self.setWindowTitle("Gaussian Filter")
-        self.viewer = viewer
-        self.sigma_xy = 1.5
-        self.sigma_z = 0.5
-        self.sigma_xy_input = None
-        self.sigma_z_input = None
-        self.create_layout()
-        self.image_combo_boxes.append(self.input_layer_combo_box)
+        self.modes = ["reflect", "constant", "nearest", "mirror", "warp"]
+        self.mode = "reflect"
+        super().__init__(viewer, sameRowMap={"sigma z": True})
 
 
-    def create_layout(self):
-        main_layout = QVBoxLayout()
-        input_layer_label, self.input_layer_combo_box = WidgetTool.getComboInput(self, "image:",
-                                                                                 self.image_layers,
-                                                                                 )
-        sigma_xy_label, self.sigma_xy_input = WidgetTool.getLineInput(self, "sigma xy:",
-                                                            self.sigma_xy,
-                                                            self.field_width,
-                                                            self.sigma_changed)
-        sigma_z_label, self.sigma_z_input = WidgetTool.getLineInput(self, "sigma z:",
-                                                                   self.sigma_z,
-                                                                   self.field_width,
-                                                                   self.sigma_changed)
-        mode_label, self.mode_combo_box = WidgetTool.getComboInput(self, "mode:",
-                                                                                 self.modes,
-                                                                                 )
-        apply_button = QPushButton("&Apply")
-        apply_button.clicked.connect(self.on_apply_button_clicked)
-        layer_layout = QHBoxLayout()
-        size_layout = QHBoxLayout()
-        mode_layout = QHBoxLayout()
-        button_layout = QHBoxLayout()
-
-        layer_layout.addWidget(input_layer_label)
-        layer_layout.addWidget(self.input_layer_combo_box)
-        size_layout.addWidget(sigma_xy_label)
-        size_layout.addWidget(self.sigma_xy_input)
-        size_layout.addWidget(sigma_z_label)
-        size_layout.addWidget(self.sigma_z_input)
-        mode_layout.addWidget(mode_label)
-        mode_layout.addWidget(self.mode_combo_box)
-        button_layout.addWidget(apply_button)
-
-        main_layout.addLayout(layer_layout)
-        main_layout.addLayout(size_layout)
-        main_layout.addLayout(mode_layout)
-        main_layout.addLayout(button_layout)
-
-        self.setLayout(main_layout)
+    def getOptions(self):
+        options = Options("Filament Toolbox", "gaussian_filter")
+        options.addImage()
+        options.addFloat("sigma xy", value=1.5)
+        options.addFloat("sigma z", value=0.5)
+        options.addChoice("mode", choices=self.modes, value=self.mode)
+        options.load()
+        return options
 
 
-    def sigma_changed(self):
-        pass
-
-
-    def on_apply_button_clicked(self):
-        text = self.input_layer_combo_box.currentText()
-        self.input_layer = self.napari_util.getLayerWithName(text)
-        sigma_xy = float(self.sigma_xy_input.text().strip())
-        sigma_z = float(self.sigma_z_input.text().strip())
-        mode = self.mode_combo_box.currentText()
-        self.filter = GaussianFilter(self.input_layer.data)
-        self.filter.sigma = (sigma_z, sigma_xy, sigma_xy)
-        self.filter.mode = mode
-        worker = create_worker(self.filter.run,
-                               _progress={'desc': 'Applying median filter...'}
+    def apply(self):
+        self.widget._onApplyButtonClicked()
+        self.imageLayer = self.widget.getImageLayer("image")
+        self.operation = GaussianFilter(self.imageLayer.data)
+        self.operation.sigma = (self.options.value("sigma z"),
+                                self.options.value("sigma_xy"),
+                                self.options.value("sigma_xy"))
+        self.operation.mode = self.options.value("mode")
+        worker = create_worker(self.operation.run,
+                               _progress={'desc': 'Applying Gaussian...'}
                                )
-        worker.finished.connect(self.on_filter_finished)
+        worker.finished.connect(self.displayResult)
         worker.start()
 
 
-    def on_filter_finished(self):
-        name = self.input_layer.name + " gaussian"
-        self.viewer.add_image(
-            self.filter.result,
-            name=name,
-            scale=self.input_layer.scale,
-            units=self.input_layer.units,
-            blending='additive'
-        )
+    def displayResult(self):
+        name = self.imageLayer.name + " Gaussian"
+        self.displayImage(name)
 
 
 
