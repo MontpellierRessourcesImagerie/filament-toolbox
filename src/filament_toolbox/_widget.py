@@ -1,16 +1,14 @@
 """
 This module contains the tools of the filament-toolbox
 """
-from abc import abstractmethod, ABC
-from codecs import namereplace_errors
-from typing import TYPE_CHECKING
+from abc import abstractmethod, ABCMeta
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-import napari
 from autooptions import Options
 from autooptions import OptionsWidget
 from napari.layers import Image, Labels
-from numba.core.types import uint16, uint32
+from numba.core.types import uint32
 from qtpy.QtWidgets import QPushButton, QWidget
 from qtpy.QtWidgets import QVBoxLayout, QHBoxLayout
 from qtpy.QtWidgets import QSlider, QCheckBox
@@ -105,6 +103,7 @@ class SimpleWidget(QWidget):
 
     def __init__(self, viewer, sameRowMap=None):
         super().__init__()
+        self.modes = ["reflect", "constant", "nearest", "mirror", "warp"]
         self.viewer = viewer
         self.options = self.getOptions()
         self.widget = None
@@ -112,6 +111,10 @@ class SimpleWidget(QWidget):
         self.operation = None
         self.imageLayer = None
         self.createLayout()
+
+
+    def addModesOption(self, options):
+        options.addChoice("mode", choices=self.modes, value=self.modes[0])
 
 
     def createLayout(self):
@@ -130,6 +133,10 @@ class SimpleWidget(QWidget):
             units=self.imageLayer.units,
             blending='additive'
         )
+
+
+    def sigmasChanged(self, value):
+        pass    # default implementation does nothing
 
 
     @abstractmethod
@@ -230,7 +237,6 @@ class AnisotropicDiffusionFilterWidget(SimpleWidget):
 
 
     def apply(self):
-        self.widget._onApplyButtonClicked()
         self.imageLayer = self.widget.getImageLayer("image")
         self.operation = AnisotropicDiffusionFilter(self.imageLayer.data)
         self.operation.iterations = self.options.value('iterations')
@@ -254,129 +260,10 @@ class AnisotropicDiffusionFilterWidget(SimpleWidget):
 
 
 # noinspection PyTypeChecker
-class MedianFilterWidget(ToolboxWidget):
-
-
-    def __init__(self, viewer: "napari.viewer.Viewer"):
-        super().__init__(viewer)
-        self.setWindowTitle("Median Filter")
-        self.viewer = viewer
-        self.median_size_xy = 3
-        self.median_size_z = 1
-        self.footprint_radius = 1
-        self.median_size_xy_input = None
-        self.median_size_z_input = None
-        self.create_layout()
-        self.image_combo_boxes.append(self.input_layer_combo_box)
-
-
-    def create_layout(self):
-        main_layout = QVBoxLayout()
-        input_layer_label, self.input_layer_combo_box = WidgetTool.getComboInput(self, "image:",
-                                                                                 self.image_layers,
-                                                                                 )
-        median_size_xy_label, self.median_size_xy_input = WidgetTool.getLineInput(self, "size xy:",
-                                                                   self.median_size_xy,
-                                                                   self.field_width,
-                                                                   self.median_size_changed)
-        median_size_z_label, self.median_size_z_input = WidgetTool.getLineInput(self, "size z:",
-                                                                   self.median_size_z,
-                                                                   self.field_width,
-                                                                   self.median_size_changed)
-        footprint_label, self.footprint_combo_box = WidgetTool.getComboInput(self, "footprint:",
-                                                                                 self.footprints,
-                                                                                 )
-        footprint_radius_label, self.footprint_radius_input = WidgetTool.getLineInput(self, "radius:",
-                                                                   self.footprint_radius,
-                                                                   self.field_width,
-                                                                   self.footprint_radius_changed)
-        mode_label, self.mode_combo_box = WidgetTool.getComboInput(self, "mode:",
-                                                                                 self.modes,
-                                                                                 )
-        apply_button = QPushButton("&Apply")
-        apply_button.clicked.connect(self.on_apply_button_clicked)
-        layer_layout = QHBoxLayout()
-        size_layout = QHBoxLayout()
-        footprint_layout = QHBoxLayout()
-        mode_layout = QHBoxLayout()
-        button_layout = QHBoxLayout()
-
-        layer_layout.addWidget(input_layer_label)
-        layer_layout.addWidget(self.input_layer_combo_box)
-        size_layout.addWidget(median_size_xy_label)
-        size_layout.addWidget(self.median_size_xy_input)
-        size_layout.addWidget(median_size_z_label)
-        size_layout.addWidget(self.median_size_z_input)
-        footprint_layout.addWidget(footprint_label)
-        footprint_layout.addWidget(self.footprint_combo_box)
-        footprint_layout.addWidget(footprint_radius_label)
-        footprint_layout.addWidget(self.footprint_radius_input)
-        mode_layout.addWidget(mode_label)
-        mode_layout.addWidget(self.mode_combo_box)
-        button_layout.addWidget(apply_button)
-
-        main_layout.addLayout(layer_layout)
-        main_layout.addLayout(size_layout)
-        main_layout.addLayout(footprint_layout)
-        main_layout.addLayout(mode_layout)
-        main_layout.addLayout(button_layout)
-
-        self.setLayout(main_layout)
-
-
-    def median_size_changed(self):
-        pass
-
-
-    def footprint_radius_changed(self):
-        pass
-
-
-    def on_apply_button_clicked(self):
-        text = self.input_layer_combo_box.currentText()
-        self.input_layer = self.napari_util.getLayerWithName(text)
-        size_xy = int(self.median_size_xy_input.text().strip())
-        size_z = int(self.median_size_z_input.text().strip())
-        footprint = None
-        footprint_text = self.footprint_combo_box.currentText()
-        footprint_radius = int(self.footprint_radius_input.text().strip())
-        if not footprint_text == "none":
-            if footprint_text == "cube":
-                footprint_width = 2 * footprint_radius + 1
-                footprint = skimage.morphology.footprint_rectangle((footprint_width, footprint_width, footprint_width))
-            else:
-                footprint_function = getattr(skimage.morphology, footprint_text)
-                footprint = footprint_function(footprint_radius)
-        mode = self.mode_combo_box.currentText()
-        self.filter = MedianFilter(self.input_layer.data)
-        self.filter.size = (size_z, size_xy, size_xy)
-        self.filter.footprint = footprint
-        self.filter.mode = mode
-        worker = create_worker(self.filter.run,
-                               _progress={'desc': 'Applying median filter...'}
-                               )
-        worker.finished.connect(self.on_filter_finished)
-        worker.start()
-
-
-    def on_filter_finished(self):
-        name = self.input_layer.name + " median"
-        self.viewer.add_image(
-            self.filter.result,
-            name=name,
-            scale=self.input_layer.scale,
-            units=self.input_layer.units,
-            blending='additive'
-        )
-
-
-# noinspection PyTypeChecker
 class GaussianFilterWidget(SimpleWidget):
 
 
     def __init__(self, viewer: "napari.viewer.Viewer"):
-        self.modes = ["reflect", "constant", "nearest", "mirror", "warp"]
-        self.mode = "reflect"
         super().__init__(viewer, sameRowMap={"sigma z": True})
 
 
@@ -385,18 +272,17 @@ class GaussianFilterWidget(SimpleWidget):
         options.addImage()
         options.addFloat("sigma xy", value=1.5)
         options.addFloat("sigma z", value=0.5)
-        options.addChoice("mode", choices=self.modes, value=self.mode)
+        options.addChoice("mode", choices=self.modes, value=self.modes[0])
         options.load()
         return options
 
 
     def apply(self):
-        self.widget._onApplyButtonClicked()
         self.imageLayer = self.widget.getImageLayer("image")
         self.operation = GaussianFilter(self.imageLayer.data)
         self.operation.sigma = (self.options.value("sigma z"),
-                                self.options.value("sigma_xy"),
-                                self.options.value("sigma_xy"))
+                                self.options.value("sigma xy"),
+                                self.options.value("sigma xy"))
         self.operation.mode = self.options.value("mode")
         worker = create_worker(self.operation.run,
                                _progress={'desc': 'Applying Gaussian...'}
@@ -407,6 +293,63 @@ class GaussianFilterWidget(SimpleWidget):
 
     def displayResult(self):
         name = self.imageLayer.name + " Gaussian"
+        self.displayImage(name)
+
+
+
+# noinspection PyTypeChecker
+class MedianFilterWidget(SimpleWidget):
+
+
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer, sameRowMap={"size z": True, "radius": True})
+
+
+    def getOptions(self):
+        options = Options("Filament Toolbox", "median_filter")
+        options.addImage()
+        options.addInt("size xy", value=3)
+        options.addInt("size z", value=1)
+        options.addChoice("footprint", choices=["none", "cube", "ball", "octahedron"], value="none")
+        options.addInt("radius", value=1)
+        options.addChoice("mode", choices=self.modes, value=self.modes[0])
+        options.load()
+        return options
+
+
+    def apply(self):
+        self.imageLayer = self.widget.getImageLayer("image")
+        self.operation = MedianFilter(self.imageLayer.data)
+        self.operation.size = (self.options.value("size z"),
+                                self.options.value("size xy"),
+                                self.options.value("size xy"))
+        footprintText = self.options.value("footprint")
+        radius = self.options.value("radius")
+        footprint = self.getFootprintFunction(footprintText, footprintRadius=radius)
+        self.operation.footprint = footprint
+        self.operation.mode = self.options.value("mode")
+        worker = create_worker(self.operation.run,
+                               _progress={'desc': 'Applying Median...'}
+                               )
+        worker.finished.connect(self.displayResult)
+        worker.start()
+
+
+    @classmethod
+    def getFootprintFunction(cls, footprintText, footprintRadius=1):
+        footprint = None
+        if not footprintText == "none":
+            if footprintText == "cube":
+                footprintWidth = 2 * footprintRadius + 1
+                footprint = skimage.morphology.footprint_rectangle((footprintWidth, footprintWidth, footprintWidth))
+            else:
+                footprintFunction = getattr(skimage.morphology, footprintText)
+                footprint = footprintFunction(footprintRadius)
+        return footprint
+
+
+    def displayResult(self):
+        name = self.imageLayer.name + " Median"
         self.displayImage(name)
 
 
@@ -657,152 +600,92 @@ class ThresholdWidget(ToolboxWidget):
         )
 
 
-class EdgeFilterWidget(ToolboxWidget):
+
+class RidgeFilterWidget(SimpleWidget):
 
 
-    def __init__(self, viewer: "napari.viewer.Viewer"):
-        super().__init__(viewer)
+    def __init__(self, viewer: "napari.viewer.Viewer", sameRowMap=None):
         self.sigmas = [1, 3]
-        self.black_ridges = False
-        self.sigmas_input = None
-        self.black_ridges_checkbox = None
+        super().__init__(viewer, sameRowMap)
 
 
-    def get_sigmas_as_text(self):
-        return ','.join([str(sigma) for sigma in self.sigmas])
+    def addSigmaOption(self, options):
+        options.addStr("sigmas", value=self.getSigmasAsText(), callback=self.sigmasChanged)
 
 
-
-class FrangiFilterWidget(EdgeFilterWidget):
-
-
-    def __init__(self, viewer: "napari.viewer.Viewer"):
-        super().__init__(viewer)
-        self.alpha = 0.5
-        self.beta = 0.5
-        self.gamma = None
-        self.alpha_input = None
-        self.beta_input = None
-        self.gamma_input = None
-        self.create_layout()
-        self.image_combo_boxes.append(self.input_layer_combo_box)
-
-
-    def create_layout(self):
-        main_layout = QVBoxLayout()
-        input_layer_label, self.input_layer_combo_box = WidgetTool.getComboInput(self, "image:",
-                                                                                 self.image_layers,
-                                                                                 )
-        sigmas_label, self.sigmas_input = WidgetTool.getLineInput(self, "sigmas:",
-                                                                                  self.get_sigmas_as_text(),
-                                                                                  self.field_width,
-                                                                                  self.sigmas_changed)
-        alpha_label, self.alpha_input = WidgetTool.getLineInput(self, "alpha:",
-                                                                                  self.alpha,
-                                                                                  self.field_width,
-                                                                                  self.alpha_changed)
-        beta_label, self.beta_input = WidgetTool.getLineInput(self, "beta:",
-                                                               self.beta,
-                                                               self.field_width,
-                                                               self.beta_changed)
-        gamma_label, self.gamma_input = WidgetTool.getLineInput(self, "gamma:",
-                                                             self.gamma,
-                                                             self.field_width,
-                                                             self.gamma_changed)
-        self.black_ridges_checkbox = QCheckBox("black ridges")
-        mode_label, self.mode_combo_box = WidgetTool.getComboInput(self, "mode:",
-                                                                                 self.modes,
-                                                                                 )
-        apply_button = QPushButton("&Apply")
-        apply_button.clicked.connect(self.on_apply_button_clicked)
-        layer_layout = QHBoxLayout()
-        sigma_layout = QHBoxLayout()
-        abc_layout = QHBoxLayout()
-        black_ridges_layout = QHBoxLayout()
-        mode_layout = QHBoxLayout()
-        button_layout = QHBoxLayout()
-
-        layer_layout.addWidget(input_layer_label)
-        layer_layout.addWidget(self.input_layer_combo_box)
-        sigma_layout.addWidget(sigmas_label)
-        sigma_layout.addWidget(self.sigmas_input)
-        abc_layout.addWidget(alpha_label)
-        abc_layout.addWidget(self.alpha_input)
-        abc_layout.addWidget(beta_label)
-        abc_layout.addWidget(self.beta_input)
-        abc_layout.addWidget(gamma_label)
-        abc_layout.addWidget(self.gamma_input)
-        black_ridges_layout.addWidget(self.black_ridges_checkbox)
-        mode_layout.addWidget(mode_label)
-        mode_layout.addWidget(self.mode_combo_box)
-        button_layout.addWidget(apply_button)
-
-        main_layout.addLayout(layer_layout)
-        main_layout.addLayout(sigma_layout)
-        main_layout.addLayout(abc_layout)
-        main_layout.addLayout(black_ridges_layout)
-        main_layout.addLayout(mode_layout)
-        main_layout.addLayout(button_layout)
-
-        self.setLayout(main_layout)
-
-
-    def sigmas_changed(self, value):
+    def sigmasChanged(self, value):
         self.sigmas = value.strip().split(",")
         self.sigmas = [float(sigma.strip()) for sigma in self.sigmas]
 
 
-    def alpha_changed(self):
-        pass
+    def addBlackRidgesOption(self, options):
+        options.addBool("black ridges", False)
 
 
-    def beta_changed(self):
-        pass
+    def getSigmasAsText(self):
+        return ','.join([str(sigma) for sigma in self.sigmas])
 
 
-    def gamma_changed(self):
-        pass
+    def apply(self):
+        raise Exception("Abstract method apply of class RidgeFilterWidget called!")
 
 
-    def on_apply_button_clicked(self):
-        text = self.input_layer_combo_box.currentText()
-        self.input_layer = self.napari_util.getLayerWithName(text)
-        alpha = float(self.alpha_input.text().strip())
-        beta = float(self.beta_input.text().strip())
-        gamma_text = self.gamma_input.text().strip()
+    def displayResult(self):
+        raise Exception("Abstract method displayResult of class RidgeFilterWidget called!")
+
+
+    def getOptions(self):
+        raise Exception("Abstract method getOptions of class RidgeFilterWidget called!")
+
+
+
+class FrangiFilterWidget(RidgeFilterWidget):
+
+
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer)
+
+
+    def getOptions(self):
+        options = Options(applicationName="Filament Toolbox", optionsName="frangi_filter")
+        options.addImage()
+        self.addSigmaOption(options)
+        options.addFloat("alpha", value=0.5)
+        options.addFloat("beta", value=0.5)
+        options.addStr("gamma", value="None")
+        self.addBlackRidgesOption(options)
+        self.addModesOption(options)
+        options.load()
+        return options
+
+
+    def apply(self):
+        self.imageLayer = self.widget.getImageLayer("image")
+        self.operation = FrangiFilter(self.imageLayer.data)
+        self.operation.sigmas = self.sigmas
+        self.operation.alpha = self.options.value('alpha')
+        self.operation.beta = self.options.value('beta')
         gamma = None
-        if not gamma_text in ['NONE', "None", "none"]:
-            gamma = float(gamma_text)
-        black_ridges = self.black_ridges_checkbox.isChecked()
-        mode = self.mode_combo_box.currentText()
-        self.filter = FrangiFilter(self.input_layer.data)
-        self.filter.sigmas = self.sigmas
-        self.filter.alpha = alpha
-        self.filter.beta = beta
-        self.filter.gamma = gamma
-        self.filter.black_ridges = black_ridges
-        self.filter.mode = mode
-        worker = create_worker(self.filter.run,
+        gammaText = self.options.value('gamma').strip().lower()
+        if not gammaText == 'none':
+            gamma = float(gammaText)
+        self.operation.gamma = gamma
+        self.operation.black_ridges = self.options.value('black ridges')
+        self.operation.mode = self.options.value('mode')
+        worker = create_worker(self.operation.run,
                                _progress={'desc': 'Applying Frangi Filter...'}
                                )
-        worker.finished.connect(self.on_filter_finished)
+        worker.finished.connect(self.displayResult)
         worker.start()
 
 
-    def on_filter_finished(self):
-        name = self.input_layer.name + " frangi"
-        self.viewer.add_image(
-            self.filter.result,
-            name=name,
-            scale=self.input_layer.scale,
-            units=self.input_layer.units,
-            blending='additive',
-            colormap='inferno'
-        )
+    def displayResult(self):
+        name = self.imageLayer.name + " Frangi"
+        self.displayImage(name)
 
 
 
-class SatoFilterWidget(EdgeFilterWidget):
+class SatoFilterWidget(RidgeFilterWidget):
 
 
     def __init__(self, viewer: "napari.viewer.Viewer"):
@@ -817,9 +700,9 @@ class SatoFilterWidget(EdgeFilterWidget):
                                                                                  self.image_layers,
                                                                                  )
         sigmas_label, self.sigmas_input = WidgetTool.getLineInput(self, "sigmas:",
-                                                                                  self.get_sigmas_as_text(),
-                                                                                  self.field_width,
-                                                                                  self.sigmas_changed)
+                                                                  self.getSigmasAsText(),
+                                                                  self.field_width,
+                                                                  self.sigmasChanged)
         self.black_ridges_checkbox = QCheckBox("black ridges")
         mode_label, self.mode_combo_box = WidgetTool.getComboInput(self, "mode:",
                                                                                  self.modes,
@@ -850,7 +733,7 @@ class SatoFilterWidget(EdgeFilterWidget):
         self.setLayout(main_layout)
 
 
-    def sigmas_changed(self, value):
+    def sigmasChanged(self, value):
         self.sigmas = value.strip().split(",")
         self.sigmas = [float(sigma.strip()) for sigma in self.sigmas]
 
@@ -883,7 +766,7 @@ class SatoFilterWidget(EdgeFilterWidget):
         )
 
 
-class MeijeringFilterWidget(EdgeFilterWidget):
+class MeijeringFilterWidget(RidgeFilterWidget):
 
 
     def __init__(self, viewer: "napari.viewer.Viewer"):
@@ -900,9 +783,9 @@ class MeijeringFilterWidget(EdgeFilterWidget):
                                                                                  self.image_layers,
                                                                                  )
         sigmas_label, self.sigmas_input = WidgetTool.getLineInput(self, "sigmas:",
-                                                                                  self.get_sigmas_as_text(),
-                                                                                  self.field_width,
-                                                                                  self.sigmas_changed)
+                                                                  self.getSigmasAsText(),
+                                                                  self.field_width,
+                                                                  self.sigmasChanged)
         alpha_label, self.alpha_input = WidgetTool.getLineInput(self, "alpha:",
                                                                                   self.alpha,
                                                                                   self.field_width,
@@ -941,7 +824,7 @@ class MeijeringFilterWidget(EdgeFilterWidget):
         self.setLayout(main_layout)
 
 
-    def sigmas_changed(self, value):
+    def sigmasChanged(self, value):
         self.sigmas = value.strip().split(",")
         self.sigmas = [float(sigma.strip()) for sigma in self.sigmas]
 

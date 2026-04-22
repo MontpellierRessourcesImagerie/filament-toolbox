@@ -46,41 +46,6 @@ class FilterWithSE(Filter):
 
 
 
-class MedianFilter(FilterWithSE):
-
-
-    def __init__(self, input_image):
-        super().__init__(input_image)
-
-
-    def run(self):
-        self.result = median_filter(self.image,
-                                    size=self.get_size(),
-                                    footprint=self.footprint,
-                                    mode=self.mode
-                                    )
-        
-
-
-class GaussianFilter(Filter):
-
-
-    def __init__(self, input_image):
-        super().__init__(input_image)
-        self.sigma = (1.3, 1.3, 1.3)
-
-
-    def get_sigma(self):
-        if self.image.ndim == 2:
-            return self.sigma[1:]
-        return self.sigma
-
-
-    def run(self):
-        self.result = gaussian_filter(self.image, self.get_sigma(), mode=self.mode)
-
-
-
 class AnisotropicDiffusionFilter(Filter):
 
 
@@ -110,6 +75,41 @@ class AnisotropicDiffusionFilter(Filter):
                               gamma=self.gamma,
                               voxelspacing=self.get_step(),
                               option=self.option)
+
+
+
+class GaussianFilter(Filter):
+
+
+    def __init__(self, input_image):
+        super().__init__(input_image)
+        self.sigma = (1.3, 1.3, 1.3)
+
+
+    def get_sigma(self):
+        if self.image.ndim == 2:
+            return self.sigma[1:]
+        return self.sigma
+
+
+    def run(self):
+        self.result = gaussian_filter(self.image, self.get_sigma(), mode=self.mode)
+
+
+
+class MedianFilter(FilterWithSE):
+
+
+    def __init__(self, input_image):
+        super().__init__(input_image)
+
+
+    def run(self):
+        self.result = median_filter(self.image,
+                                    size=self.get_size(),
+                                    footprint=self.footprint,
+                                    mode=self.mode
+                                    )
 
 
 
@@ -162,21 +162,6 @@ class FrangiFilter(RidgeFilter):
 
 
 
-class SatoFilter(RidgeFilter):
-
-
-    def __init__(self, input_image):
-        super().__init__(input_image)
-
-
-    def run(self):
-        self.result = sato(self.image,
-                             sigmas=self.sigmas,
-                             black_ridges=self.black_ridges,
-                             mode=self.mode)
-
-
-
 class MeijeringFilter(RidgeFilter):
 
 
@@ -191,3 +176,19 @@ class MeijeringFilter(RidgeFilter):
                            alpha=self.alpha,
                            black_ridges=self.black_ridges,
                            mode=self.mode)
+
+
+
+class SatoFilter(RidgeFilter):
+
+
+    def __init__(self, input_image):
+        super().__init__(input_image)
+
+
+    def run(self):
+        self.result = sato(self.image,
+                             sigmas=self.sigmas,
+                             black_ridges=self.black_ridges,
+                             mode=self.mode)
+
