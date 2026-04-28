@@ -36,10 +36,8 @@ if TYPE_CHECKING:
     import napari
 
 
-
 def activate():
     print("Filament Toolbox activated")
-
 
 
 def measure_skeleton(viewer: "napari.viewer.Viewer"):
@@ -690,80 +688,35 @@ class SatoFilterWidget(RidgeFilterWidget):
 
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__(viewer)
-        self.create_layout()
-        self.image_combo_boxes.append(self.input_layer_combo_box)
 
 
-    def create_layout(self):
-        main_layout = QVBoxLayout()
-        input_layer_label, self.input_layer_combo_box = WidgetTool.getComboInput(self, "image:",
-                                                                                 self.image_layers,
-                                                                                 )
-        sigmas_label, self.sigmas_input = WidgetTool.getLineInput(self, "sigmas:",
-                                                                  self.getSigmasAsText(),
-                                                                  self.field_width,
-                                                                  self.sigmasChanged)
-        self.black_ridges_checkbox = QCheckBox("black ridges")
-        mode_label, self.mode_combo_box = WidgetTool.getComboInput(self, "mode:",
-                                                                                 self.modes,
-                                                                                 )
-        apply_button = QPushButton("&Apply")
-        apply_button.clicked.connect(self.on_apply_button_clicked)
-        layer_layout = QHBoxLayout()
-        sigma_layout = QHBoxLayout()
-        black_ridges_layout = QHBoxLayout()
-        mode_layout = QHBoxLayout()
-        button_layout = QHBoxLayout()
-
-        layer_layout.addWidget(input_layer_label)
-        layer_layout.addWidget(self.input_layer_combo_box)
-        sigma_layout.addWidget(sigmas_label)
-        sigma_layout.addWidget(self.sigmas_input)
-        black_ridges_layout.addWidget(self.black_ridges_checkbox)
-        mode_layout.addWidget(mode_label)
-        mode_layout.addWidget(self.mode_combo_box)
-        button_layout.addWidget(apply_button)
-
-        main_layout.addLayout(layer_layout)
-        main_layout.addLayout(sigma_layout)
-        main_layout.addLayout(black_ridges_layout)
-        main_layout.addLayout(mode_layout)
-        main_layout.addLayout(button_layout)
-
-        self.setLayout(main_layout)
+    def getOptions(self):
+        options = Options(applicationName="Filament Toolbox", optionsName="sato_filter")
+        options.addImage()
+        self.addSigmaOption(options)
+        self.addBlackRidgesOption(options)
+        self.addModesOption(options)
+        options.load()
+        return options
 
 
-    def sigmasChanged(self, value):
-        self.sigmas = value.strip().split(",")
-        self.sigmas = [float(sigma.strip()) for sigma in self.sigmas]
-
-
-    def on_apply_button_clicked(self):
-        text = self.input_layer_combo_box.currentText()
-        self.input_layer = self.napari_util.getLayerWithName(text)
-        black_ridges = self.black_ridges_checkbox.isChecked()
-        mode = self.mode_combo_box.currentText()
-        self.filter = SatoFilter(self.input_layer.data)
-        self.filter.sigmas = self.sigmas
-        self.filter.black_ridges = black_ridges
-        self.filter.mode = mode
-        worker = create_worker(self.filter.run,
+    def apply(self):
+        self.imageLayer = self.widget.getImageLayer("image")
+        self.operation = SatoFilter(self.imageLayer.data)
+        self.operation.sigmas = self.sigmas
+        self.operation.black_ridges = self.options.value('black ridges')
+        self.operation.mode = self.options.value('mode')
+        worker = create_worker(self.operation.run,
                                _progress={'desc': 'Applying Sato Filter...'}
                                )
-        worker.finished.connect(self.on_filter_finished)
+        worker.finished.connect(self.displayResult)
         worker.start()
 
 
-    def on_filter_finished(self):
-        name = self.input_layer.name + " sato"
-        self.viewer.add_image(
-            self.filter.result,
-            name=name,
-            scale=self.input_layer.scale,
-            units=self.input_layer.units,
-            blending='additive',
-            colormap='inferno'
-        )
+    def displayResult(self):
+        name = self.imageLayer.name + " Sato"
+        self.displayImage(name)
+
 
 
 class MeijeringFilterWidget(RidgeFilterWidget):
@@ -771,99 +724,40 @@ class MeijeringFilterWidget(RidgeFilterWidget):
 
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__(viewer)
-        self.alpha = None
-        self.alpha_input = None
-        self.create_layout()
-        self.image_combo_boxes.append(self.input_layer_combo_box)
 
 
-    def create_layout(self):
-        main_layout = QVBoxLayout()
-        input_layer_label, self.input_layer_combo_box = WidgetTool.getComboInput(self, "image:",
-                                                                                 self.image_layers,
-                                                                                 )
-        sigmas_label, self.sigmas_input = WidgetTool.getLineInput(self, "sigmas:",
-                                                                  self.getSigmasAsText(),
-                                                                  self.field_width,
-                                                                  self.sigmasChanged)
-        alpha_label, self.alpha_input = WidgetTool.getLineInput(self, "alpha:",
-                                                                                  self.alpha,
-                                                                                  self.field_width,
-                                                                                  self.alpha_changed)
-        self.black_ridges_checkbox = QCheckBox("black ridges")
-        mode_label, self.mode_combo_box = WidgetTool.getComboInput(self, "mode:",
-                                                                                 self.modes,
-                                                                                 )
-        apply_button = QPushButton("&Apply")
-        apply_button.clicked.connect(self.on_apply_button_clicked)
-        layer_layout = QHBoxLayout()
-        sigma_layout = QHBoxLayout()
-        abc_layout = QHBoxLayout()
-        black_ridges_layout = QHBoxLayout()
-        mode_layout = QHBoxLayout()
-        button_layout = QHBoxLayout()
-
-        layer_layout.addWidget(input_layer_label)
-        layer_layout.addWidget(self.input_layer_combo_box)
-        sigma_layout.addWidget(sigmas_label)
-        sigma_layout.addWidget(self.sigmas_input)
-        abc_layout.addWidget(alpha_label)
-        abc_layout.addWidget(self.alpha_input)
-        black_ridges_layout.addWidget(self.black_ridges_checkbox)
-        mode_layout.addWidget(mode_label)
-        mode_layout.addWidget(self.mode_combo_box)
-        button_layout.addWidget(apply_button)
-
-        main_layout.addLayout(layer_layout)
-        main_layout.addLayout(sigma_layout)
-        main_layout.addLayout(abc_layout)
-        main_layout.addLayout(black_ridges_layout)
-        main_layout.addLayout(mode_layout)
-        main_layout.addLayout(button_layout)
-
-        self.setLayout(main_layout)
+    def getOptions(self):
+        options = Options(applicationName="Filament Toolbox", optionsName="meijering_filter")
+        options.addImage()
+        self.addSigmaOption(options)
+        options.addStr("alpha", value="None")
+        self.addBlackRidgesOption(options)
+        self.addModesOption(options)
+        options.load()
+        return options
 
 
-    def sigmasChanged(self, value):
-        self.sigmas = value.strip().split(",")
-        self.sigmas = [float(sigma.strip()) for sigma in self.sigmas]
-
-
-    def alpha_changed(self):
-        pass
-
-
-    def on_apply_button_clicked(self):
-        text = self.input_layer_combo_box.currentText()
-        self.input_layer = self.napari_util.getLayerWithName(text)
-        alpha_text = self.alpha_input.text().strip()
+    def apply(self):
+        self.imageLayer = self.widget.getImageLayer("image")
+        self.operation = MeijeringFilter(self.imageLayer.data)
+        self.operation.sigmas = self.sigmas
         alpha = None
-        if not alpha_text in ['NONE', "None", "none"]:
-            alpha = float(alpha_text)
-        black_ridges = self.black_ridges_checkbox.isChecked()
-        mode = self.mode_combo_box.currentText()
-        self.filter = MeijeringFilter(self.input_layer.data)
-        self.filter.sigmas = self.sigmas
-        self.filter.alpha = alpha
-        self.filter.black_ridges = black_ridges
-        self.filter.mode = mode
-        worker = create_worker(self.filter.run,
+        alphaText = self.options.value('alpha').strip().lower()
+        if not alphaText == 'none':
+            alpha = float(alphaText)
+        self.operation.alpha = alpha
+        self.operation.black_ridges = self.options.value('black ridges')
+        self.operation.mode = self.options.value('mode')
+        worker = create_worker(self.operation.run,
                                _progress={'desc': 'Applying Meijering Filter...'}
                                )
-        worker.finished.connect(self.on_filter_finished)
+        worker.finished.connect(self.displayResult)
         worker.start()
 
 
-    def on_filter_finished(self):
-        name = self.input_layer.name + " meijering"
-        self.viewer.add_image(
-            self.filter.result,
-            name=name,
-            scale=self.input_layer.scale,
-            units=self.input_layer.units,
-            blending='additive',
-            colormap='inferno'
-        )
+    def displayResult(self):
+        name = self.imageLayer.name + " Meijering"
+        self.displayImage(name)
 
 
 
