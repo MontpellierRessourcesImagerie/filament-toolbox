@@ -50,6 +50,7 @@ from filament_toolbox.lib.qtutil import WidgetTool
 from filament_toolbox.lib.segmentation import ClearBorder
 from filament_toolbox.lib.segmentation import Threshold
 from filament_toolbox.lib.tracing import BrightestPathTracing
+from filament_toolbox.lib.transform import IsotropicResampling
 
 if TYPE_CHECKING:
     import napari
@@ -372,6 +373,42 @@ class GaussianFilterWidget(SimpleWidget):
     def displayResult(self):
         name = self.imageLayer.name + " Gaussian"
         self.displayImage(name)
+
+
+class IsotropicResamplingWidget(SimpleWidget):
+
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer)
+
+    def getOptions(self):
+        options = Options("Filament Toolbox", "isotropic_resampling")
+        options.addImage()
+        return options
+
+    def apply(self):
+        self.imageLayer = self.widget.getImageLayer("image")
+        scale = self.imageLayer.scale
+        if isinstance(scale, np.ndarray):
+            scale = scale.tolist()
+        self.operation = IsotropicResampling(self.imageLayer.data, scale)
+        worker = create_worker(
+            self.operation.run, _progress={"desc": "Isotropic Resampling..."}
+        )
+        worker.finished.connect(self.displayResult)
+        worker.start()
+
+    def displayResult(self):
+        name = self.imageLayer.name + " isotropic"
+        self.imageLayer = self.widget.getImageLayer("image")
+        scale = [self.imageLayer.scale[1]] * len(self.imageLayer.scale)
+        self.viewer.add_image(
+            self.operation.result,
+            name=name,
+            scale=scale,
+            units=self.imageLayer.units,
+            blending="additive",
+            colormap=self.imageLayer.colormap,
+        )
 
 
 # noinspection PyTypeChecker
@@ -1695,8 +1732,8 @@ class LocalThicknessWidget(SimpleWidget):
 
 class MeasureLabels(ToolboxWidget):
 
-    def __init__(self):
-        super().__init__(napari.current_viewer())
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer)
         self.labels_layer = None
         self.create_layout()
         self.label_combo_boxes.append(self.label_layer_combo_box)
@@ -1807,7 +1844,7 @@ class MeasureLabels(ToolboxWidget):
             "centroid_weighted",
             "centroid_weighted_local",
             #            'coords',
-            "eccentricity",
+            # "eccentricity", 2D only
             "equivalent_diameter_area",
             "euler_number",
             "extent",
@@ -1825,15 +1862,15 @@ class MeasureLabels(ToolboxWidget):
             "label",
             "moments",
             "moments_central",
-            "moments_hu",
+            # "moments_hu", 2D only
             "moments_normalized",
             "moments_weighted",
             "moments_weighted_central",
-            "moments_weighted_hu",
+            # "moments_weighted_hu", 2D only
             "moments_weighted_normalized",
-            "orientation",
-            "perimeter",
-            "perimeter_crofton",
-            "slice",
+            # "orientation", 2D only
+            # "perimeter", 2D only
+            # "perimeter_crofton",
+            # "slice",
             "solidity",
         )
