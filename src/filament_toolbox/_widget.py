@@ -1667,6 +1667,7 @@ class LocalThicknessWidget(SimpleWidget):
         options = Options("Filament Toolbox", "local_thickness")
         options.addImage()
         options.addFloat("scale", value=0.5)
+        options.addBool("physical units (experimental)", value=False)
         options.load()
         return options
 
@@ -1674,6 +1675,12 @@ class LocalThicknessWidget(SimpleWidget):
         self.imageLayer = self.widget.getImageLayer("image")
         self.operation = LocalThickness(self.imageLayer.data)
         self.operation.scale = self.options.value("scale")
+        if self.options.value("physical units (experimental)"):
+            self.operation.usePhysicalUnits = self.options.value(
+                "physical units (experimental)"
+            )
+            self.operation.spacing = self.imageLayer.scale
+            self.operation.scale = 1
         worker = create_worker(
             self.operation.run,
             _progress={"desc": "Calculating Local Thickness..."},

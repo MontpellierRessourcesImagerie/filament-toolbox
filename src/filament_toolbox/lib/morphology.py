@@ -174,7 +174,24 @@ class LocalThickness(Filter):
     def __init__(self, image):
         super().__init__(image > 0)
         self.scale = 0.5
-        self.histogram = None
+        self.usePhysicalUnits = False
+        self.spacing = (1, 1, 1)
+
+    def getSpacing(self):
+        if self.image.ndim == 2:
+            return self.spacing[1:]
+        return self.spacing
 
     def run(self):
-        self.result = lt.local_thickness(self.image, scale=self.scale)
+        if self.usePhysicalUnits:
+            imageSpacing = self.getSpacing()
+            edtSpacing = (1, 1)
+            if self.image.ndim == 3:
+                edtSpacing = (imageSpacing[0] / imageSpacing[1], 1, 1)
+            edt = distance_transform_edt(self.image, sampling=edtSpacing)
+            self.result = (
+                lt.local_thickness_basic(edt, given_dist=True)
+                * imageSpacing[1]
+            )
+        else:
+            self.result = lt.local_thickness(self.image, scale=self.scale)
