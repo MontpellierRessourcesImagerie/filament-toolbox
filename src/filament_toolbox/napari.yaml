@@ -39,6 +39,9 @@ contributions:
     - id: filament-toolbox.hamilton_jacobi_skeletonize
       python_name: filament_toolbox:HamiltonJacobiSkeletonizeWidget
       title: Hamilton Jacobi Skeletonize
+    - id: filament-toolbox.isotropic_resampling
+      python_name: filament_toolbox:IsotropicResamplingWidget
+      title: Isotropic Resampling
     - id: filament-toolbox.label
       python_name: filament_toolbox:LabelWidget
       title: Label
@@ -70,7 +73,7 @@ contributions:
       python_name: filament_toolbox:rgb_to_16bit
       title: rgb to 16bit
     - id: filament-toolbox.measure_labels
-      python_name: filament_toolbox:MeasureLabels
+      python_name: filament_toolbox:MeasureLabelsWidget
       title: Measure Labels
     - id: filament-toolbox.rolling_ball
       python_name: filament_toolbox:RollingBallWidget
@@ -87,7 +90,7 @@ contributions:
   readers:
     - command: filament-toolbox.get_reader
       accepts_directories: false
-      filename_patterns: ['*.swc', '*.SWC']
+      filename_patterns: [ '*.swc', '*.SWC' ]
   sample_data:
     - command: filament-toolbox.make_sample_data
       display_name: Filament Toolbox
@@ -113,6 +116,8 @@ contributions:
       display_name: Gaussian Filter
     - command: filament-toolbox.hamilton_jacobi_skeletonize
       display_name: Hamilton-Jacobi Skeletonize
+    - command: filament-toolbox.isotropic_resampling
+      display_name: Isotropic Resampling
     - command: filament-toolbox.label
       display_name: Label
     - command: filament-toolbox.local_thickness
@@ -180,6 +185,10 @@ contributions:
     convert:
       - command: filament-toolbox.rgb_to_8bit
       - command: filament-toolbox.rgb_to_16bit
+    napari/layers/transform:
+      - submenu: sampling
+    sampling:
+      - command: filament-toolbox.isotropic_resampling
   submenus:
     - id: background
       label: Background
@@ -197,3 +206,5 @@ contributions:
       label: Tracing
     - id: convert
       label: Convert
+    - id: sampling
+      label: Sampling

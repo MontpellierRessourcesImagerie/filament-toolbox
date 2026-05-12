@@ -23,7 +23,6 @@ from qtpy.QtWidgets import QSlider
 from qtpy.QtWidgets import QVBoxLayout
 from qtpy.QtWidgets import QWidget
 from skimage.color import rgb2gray
-from skimage.measure import regionprops_table
 
 from filament_toolbox.lib.filter import AnisotropicDiffusionFilter
 from filament_toolbox.lib.filter import FrangiFilter
@@ -32,6 +31,7 @@ from filament_toolbox.lib.filter import MedianFilter
 from filament_toolbox.lib.filter import MeijeringFilter
 from filament_toolbox.lib.filter import RollingBall
 from filament_toolbox.lib.filter import SatoFilter
+from filament_toolbox.lib.measure import MeasureLabels
 from filament_toolbox.lib.measure import MeasureSkeleton
 from filament_toolbox.lib.metric import CenterlineDice
 from filament_toolbox.lib.metric import Dice
@@ -1730,147 +1730,33 @@ class LocalThicknessWidget(SimpleWidget):
         self.displayImage(name, colormap="inferno")
 
 
-class MeasureLabels(ToolboxWidget):
+class MeasureLabelsWidget(SimpleWidget):
 
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__(viewer)
-        self.labels_layer = None
-        self.create_layout()
-        self.label_combo_boxes.append(self.label_layer_combo_box)
-        self.image_combo_boxes.append(self.input_layer_combo_box)
 
-    def create_layout(self):
-        main_layout = QVBoxLayout()
-        label_layer_label, self.label_layer_combo_box = (
-            WidgetTool.getComboInput(
-                self,
-                "labels:",
-                self.label_layers,
-            )
+    def getOptions(self):
+        options = Options("Filament Toolbox", "measure_labels")
+        options.addLabels()
+        options.addImage(optional=[True, False])
+        options.load()
+        return options
+
+    def apply(self):
+        self.imageLayer = self.widget.getImageLayer("labels")
+        intensityImage = self.widget.getImageLayer("image")
+        intensityData = None
+        if intensityImage:
+            intensityData = intensityImage.data
+        self.operation = MeasureLabels(
+            self.imageLayer.data, intensityData, self.imageLayer.scale
         )
-        input_layer_label, self.input_layer_combo_box = (
-            WidgetTool.getComboInput(
-                self,
-                "image:",
-                self.image_layers,
-            )
+        worker = create_worker(
+            self.operation.run,
+            _progress={"desc": "Measuring Labels..."},
         )
-        apply_button = QPushButton("&Apply")
-        apply_button.clicked.connect(self.on_apply_button_clicked)
-        input_layer_layout = QHBoxLayout()
-        labels_layer_layout = QHBoxLayout()
-        button_layout = QHBoxLayout()
-        input_layer_layout.addWidget(label_layer_label)
-        input_layer_layout.addWidget(self.label_layer_combo_box)
-        labels_layer_layout.addWidget(input_layer_label)
-        labels_layer_layout.addWidget(self.input_layer_combo_box)
-        button_layout.addWidget(apply_button)
+        worker.finished.connect(self.displayResult)
+        worker.start()
 
-        main_layout.addLayout(input_layer_layout)
-        main_layout.addLayout(labels_layer_layout)
-        main_layout.addLayout(button_layout)
-
-        self.setLayout(main_layout)
-
-    def on_apply_button_clicked(self):
-        text = self.input_layer_combo_box.currentText()
-        self.input_layer = None
-        props = self.get_form_properties()
-        self.input_layer = self.napari_util.getLayerWithName(text)
-        input_data = None
-        if self.input_layer:
-            props = self.get_all_properties()
-            input_data = self.input_layer.data
-        text = self.label_layer_combo_box.currentText()
-        self.labels_layer = self.napari_util.getLayerWithName(text)
-
-        table = regionprops_table(
-            self.labels_layer.data,
-            properties=props,
-            intensity_image=input_data,
-            spacing=self.labels_layer.scale,
-        )
-        self.viewer.window.add_dock_widget(TableView(table))
-
-    @classmethod
-    def get_form_properties(self):
-        return (
-            "label",
-            "area",
-            "area_bbox",
-            "area_convex",
-            "area_filled",
-            "axis_major_length",
-            "axis_minor_length",
-            "bbox",
-            "centroid",
-            "centroid_local",
-            #            'coords',
-            "eccentricity",
-            "equivalent_diameter_area",
-            "euler_number",
-            "extent",
-            "feret_diameter_max",
-            #           'image',
-            #           'image_convex',
-            #           'image_filled',
-            #            'inertia_tensor',
-            #            'inertia_tensor_eigvals',
-            "label",
-            "moments",
-            "moments_central",
-            "moments_hu",
-            "moments_normalized",
-            "orientation",
-            "perimeter",
-            "perimeter_crofton",
-            "slice",
-            "solidity",
-        )
-
-    @classmethod
-    def get_all_properties(self):
-        return (
-            "label",
-            "area",
-            "area_bbox",
-            "area_convex",
-            "area_filled",
-            "axis_major_length",
-            "axis_minor_length",
-            "bbox",
-            "centroid",
-            "centroid_local",
-            "centroid_weighted",
-            "centroid_weighted_local",
-            #            'coords',
-            # "eccentricity", 2D only
-            "equivalent_diameter_area",
-            "euler_number",
-            "extent",
-            "feret_diameter_max",
-            #           'image',
-            #            'image_convex',
-            #            'image_filled',
-            #            'image_intensity',
-            #            'inertia_tensor',
-            #            'inertia_tensor_eigvals',
-            "intensity_max",
-            "intensity_mean",
-            "intensity_min",
-            "intensity_std",
-            "label",
-            "moments",
-            "moments_central",
-            # "moments_hu", 2D only
-            "moments_normalized",
-            "moments_weighted",
-            "moments_weighted_central",
-            # "moments_weighted_hu", 2D only
-            "moments_weighted_normalized",
-            # "orientation", 2D only
-            # "perimeter", 2D only
-            # "perimeter_crofton",
-            # "slice",
-            "solidity",
-        )
+    def displayResult(self):
+        self.viewer.window.add_dock_widget(TableView(self.operation.table))

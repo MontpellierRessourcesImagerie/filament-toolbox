@@ -20,7 +20,7 @@ from ._widget import IsotropicResamplingWidget
 from ._widget import LabelWidget
 from ._widget import LocalThicknessWidget
 from ._widget import measure_skeleton
-from ._widget import MeasureLabels
+from ._widget import MeasureLabelsWidget
 from ._widget import MedianFilterWidget
 from ._widget import MeijeringFilterWidget
 from ._widget import MetricsWidget
@@ -61,5 +61,5 @@ __all__ = (
     "MetricsWidget",
     "EuclideanDistanceTransformWidget",
     "LocalThicknessWidget",
-    "MeasureLabels",
+    "MeasureLabelsWidget",
 )

@@ -40,7 +40,6 @@ class MeasureLabels(object):
         return (
             "eccentricity",
             "moments_hu",
-            "moments_weighted_hu",
             "orientation",
             "perimeter",
             "perimeter_crofton",
@@ -59,30 +58,43 @@ class MeasureLabels(object):
             "bbox",
             "centroid",
             "centroid_local",
-            "centroid_weighted",
-            "centroid_weighted_local",
             "equivalent_diameter_area",
             "euler_number",
             "extent",
             "feret_diameter_max",
-            "intensity_max",
-            "intensity_mean",
-            "intensity_min",
-            "intensity_std",
             "label",
             "moments",
             "moments_central",
             "moments_normalized",
-            "moments_weighted",
-            "moments_weighted_central",
-            "moments_weighted_normalized",
             "solidity",
         )
 
+    @classmethod
+    def getIntensityProperties(cls):
+        return (
+            "centroid_weighted",
+            "centroid_weighted_local",
+            "intensity_max",
+            "intensity_mean",
+            "intensity_min",
+            "intensity_std",
+            "moments_weighted",
+            "moments_weighted_central",
+            "moments_weighted_normalized",
+        )
+
+    @classmethod
+    def getIntensity2DOnlyProperties(cls):
+        return ("moments_weighted_hu",)
+
     def run(self):
         properties = self.getProperties()
+        if not self.intensityImage is None:
+            properties = properties + self.getIntensityProperties()
         if self.labels.ndim == 2:
-            properties = self.getAllProperties()
+            properties = properties + self.get2DOnlyProperties()
+            if not self.intensityImage is None:
+                properties = properties + self.getIntensity2DOnlyProperties()
         self.table = regionprops_table(
             self.labels,
             properties=properties,
