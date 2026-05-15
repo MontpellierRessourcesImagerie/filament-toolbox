@@ -1734,6 +1734,33 @@ class MeasureLabelsWidget(SimpleWidget):
 
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__(viewer)
+        self.widget.addButton("Options", self.optionsButtonPressed)
+        self.regionPropOptions = None
+
+    def optionsButtonPressed(self):
+        self.regionPropOptions = self.getRegionPropsOptions()
+        self.regionPropOptions.load()
+        optionsPerRow = 2
+        sameRowSet = set()
+        counter = 0
+        allProps = self.regionPropOptions.items.keys()
+        for prop in allProps:
+            if not counter == 0 and not counter % optionsPerRow == 0:
+                sameRowSet.add(prop)
+            counter = counter + 1
+        widget = OptionsWidget(
+            self.viewer,
+            self.regionPropOptions,
+            layout_type="grid",
+            client=self,
+            sameRowSet=sameRowSet,
+        )
+        widget.addOKButton(None)
+        widget.addApplyButton(None)
+        widget.addCancelButton(None)
+        self.viewer.window.add_dock_widget(
+            widget, area="right", tabify=True, name="Options of Measure Labels"
+        )
 
     def getOptions(self):
         options = Options("Filament Toolbox", "measure_labels")
@@ -1742,7 +1769,19 @@ class MeasureLabelsWidget(SimpleWidget):
         options.load()
         return options
 
+    @classmethod
+    def getRegionPropsOptions(cls):
+        options = Options("Filament Toolbox", "region_props")
+        allProps = MeasureLabels.getAllProperties()
+        for prop in allProps:
+            options.addBool(prop, value=False)
+        options.setValue("label", True)
+        options.setValue("area", True)
+        options.load()
+        return options
+
     def apply(self):
+        self.regionPropOptions = self.getRegionPropsOptions()
         self.imageLayer = self.widget.getImageLayer("labels")
         intensityImage = self.widget.getImageLayer("image")
         intensityData = None
@@ -1750,6 +1789,13 @@ class MeasureLabelsWidget(SimpleWidget):
             intensityData = intensityImage.data
         self.operation = MeasureLabels(
             self.imageLayer.data, intensityData, self.imageLayer.scale
+        )
+        self.operation.selectedProperties = set(
+            [
+                key
+                for key in self.regionPropOptions.items.keys()
+                if self.regionPropOptions.value(key)
+            ]
         )
         worker = create_worker(
             self.operation.run,
@@ -1759,4 +1805,7 @@ class MeasureLabelsWidget(SimpleWidget):
         worker.start()
 
     def displayResult(self):
-        self.viewer.window.add_dock_widget(TableView(self.operation.table))
+        self.viewer.window.add_dock_widget(
+            TableView(self.operation.table),
+            name="Measurements of " + self.imageLayer.name,
+        )

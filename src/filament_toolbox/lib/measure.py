@@ -30,10 +30,16 @@ class MeasureLabels(object):
         self.intensityImage = intensityImage
         self.scale = scale
         self.table = None
+        self.selectedProperties = {"label", "area"}
 
     @classmethod
     def getAllProperties(cls):
-        return cls.getProperties() + cls.get2DOnlyProperties()
+        return (
+            cls.getProperties()
+            + cls.getIntensityProperties()
+            + cls.get2DOnlyProperties()
+            + cls.getIntensity2DOnlyProperties()
+        )
 
     @classmethod
     def get2DOnlyProperties(cls):
@@ -62,7 +68,6 @@ class MeasureLabels(object):
             "euler_number",
             "extent",
             "feret_diameter_max",
-            "label",
             "moments",
             "moments_central",
             "moments_normalized",
@@ -88,13 +93,14 @@ class MeasureLabels(object):
         return ("moments_weighted_hu",)
 
     def run(self):
-        properties = self.getProperties()
-        if not self.intensityImage is None:
-            properties = properties + self.getIntensityProperties()
-        if self.labels.ndim == 2:
-            properties = properties + self.get2DOnlyProperties()
-            if not self.intensityImage is None:
-                properties = properties + self.getIntensity2DOnlyProperties()
+        print("intensity image", self.intensityImage)
+        properties = self.selectedProperties.copy()
+        if self.intensityImage is None:
+            properties = properties - set(self.getIntensityProperties())
+            properties = properties - set(self.getIntensity2DOnlyProperties())
+        if self.labels.ndim > 2:
+            properties = properties - set(self.get2DOnlyProperties())
+            properties = properties - set(self.getIntensity2DOnlyProperties())
         self.table = regionprops_table(
             self.labels,
             properties=properties,
