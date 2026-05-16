@@ -8,18 +8,18 @@ class MeasureSkeleton(object):
     def __init__(self, mask):
         super().__init__()
         self.image = mask
+        self.table = None
         self.result = None
-        self.result_image = None
         self.scale = [1] * mask.ndim
         self.units = ["pixel"] * mask.ndim
 
     def run(self):
         skeleton = Skeleton(self.image, spacing=self.scale)
         branch_data = summarize(skeleton, separator="_", find_main_branch=True)
-        self.result = {}
+        self.table = {}
         for key, value in branch_data.items():
-            self.result[key] = value.values
-        self.result_image = skeleton.path_label_image()
+            self.table[key] = value.values
+        self.result = skeleton.path_label_image()
 
 
 class MeasureLabels(object):
