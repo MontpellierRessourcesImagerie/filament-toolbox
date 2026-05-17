@@ -12,7 +12,6 @@ from autooptions import OptionsWidget
 from napari.layers import Image
 from napari.layers import Labels
 from napari.qt.threading import create_worker
-from napari.utils import notifications
 from napari.utils.events import Event
 from numba.core.types import uint32
 from qtpy.QtCore import Qt
@@ -1022,91 +1021,42 @@ class ClearBorderWidget(SimpleWidget):
         self.displayLabels(name)
 
 
-class SkeletonizeWidget(ToolboxWidget):
+class SkeletonizeWidget(SimpleWidget):
 
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__(viewer)
-        self.method = "lee"
-        self.methods = ["lee", "zhang"]
-        self.method_combo_box = None
-        self.create_layout()
-        self.label_combo_boxes.append(self.label_layer_combo_box)
-
-    def create_layout(self):
-        main_layout = QVBoxLayout()
-        input_layer_label, self.label_layer_combo_box = (
-            WidgetTool.getComboInput(
-                self,
-                "image:",
-                self.label_layers,
-            )
+        self.widget.widgets["labels"][1].currentTextChanged.connect(
+            self.onLayerChanged
         )
-        self.label_layer_combo_box.currentIndexChanged.connect(
-            self.on_layer_changed
+
+    def getOptions(self):
+        options = Options("Filament toolbox", "skeletonize")
+        options.addLabels()
+        options.addChoice("method", choices=["lee", "zhang"], value="lee")
+        options.load()
+        return options
+
+    def apply(self):
+        self.imageLayer = self.widget.getImageLayer("labels")
+        self.operation = Skeletonize(self.imageLayer.data)
+        self.operation.method = self.options.value("method")
+        self.runOperationInThread("Skeletonizing...", self.displayResult)
+
+    def displayResult(self):
+        name = (
+            self.imageLayer.name + " skeleton-" + self.options.value("method")
         )
-        method_label, self.method_combo_box = WidgetTool.getComboInput(
-            self,
-            "method:",
-            self.methods,
-        )
-        apply_button = QPushButton("&Apply")
-        apply_button.clicked.connect(self.on_apply_button_clicked)
-        layer_layout = QHBoxLayout()
-        method_layout = QHBoxLayout()
-        button_layout = QHBoxLayout()
+        self.displayImage(name)
 
-        layer_layout.addWidget(input_layer_label)
-        layer_layout.addWidget(self.label_layer_combo_box)
-        method_layout.addWidget(method_label)
-        method_layout.addWidget(self.method_combo_box)
-        button_layout.addWidget(apply_button)
-
-        main_layout.addLayout(layer_layout)
-        main_layout.addLayout(method_layout)
-        main_layout.addLayout(button_layout)
-
-        self.setLayout(main_layout)
-
-    def on_layer_changed(self):
-        layer = self.napari_util.getLayerWithName(
-            self.label_layer_combo_box.currentText()
-        )
+    def onLayerChanged(self):
+        layer = self.widget.getImageLayer("labels")
         if not isinstance(layer, Labels):
             return
         if (
             layer.data.ndim == 3
-            and self.method_combo_box.currentText() == "zhang"
+            and self.widget.widgets["method"][1].currentText() == "zhang"
         ):
-            self.method_combo_box.setCurrentText("lee")
-
-    def on_apply_button_clicked(self):
-        text = self.label_layer_combo_box.currentText()
-        self.input_layer = self.napari_util.getLayerWithName(text)
-        self.filter = Skeletonize(self.input_layer.data)
-        self.filter.method = self.method_combo_box.currentText()
-        if self.input_layer.data.ndim == 3 and self.filter.method == "zhang":
-            self.filter.method = "lee"
-            notifications.show_info(
-                "Can't apply zhang to 3D data, using lee instead."
-            )
-        worker = create_worker(
-            self.filter.run,
-            _progress={
-                "desc": "Skeletonizing (" + self.filter.method + ")..."
-            },
-        )
-        worker.finished.connect(self.on_filter_finished)
-        worker.start()
-
-    def on_filter_finished(self):
-        name = self.input_layer.name + " skeleton-" + self.filter.method
-        self.viewer.add_image(
-            self.filter.result,
-            name=name,
-            scale=self.input_layer.scale,
-            units=self.input_layer.units,
-            blending="additive",
-        )
+            self.widget.widgets["method"][1].setCurrentText("lee")
 
 
 class HamiltonJacobiSkeletonizeWidget(SimpleWidget):
