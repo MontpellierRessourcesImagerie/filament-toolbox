@@ -19,7 +19,6 @@ from ._widget import HamiltonJacobiSkeletonizeWidget
 from ._widget import IsotropicResamplingWidget
 from ._widget import LabelWidget
 from ._widget import LocalThicknessWidget
-from ._widget import measure_skeleton
 from ._widget import MeasureLabelsWidget
 from ._widget import MeasureSkeletonWidget
 from ._widget import MedianFilterWidget
@@ -57,7 +56,6 @@ __all__ = (
     "HamiltonJacobiSkeletonizeWidget",
     "IsotropicResamplingWidget",
     "PixelClassifierWidget",
-    "measure_skeleton",
     "BrightestPathTracingWidget",
     "MetricsWidget",
     "EuclideanDistanceTransformWidget",

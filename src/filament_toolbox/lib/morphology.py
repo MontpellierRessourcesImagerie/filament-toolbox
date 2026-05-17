@@ -1,4 +1,3 @@
-import cv2
 import localthickness as lt
 import numpy as np
 from scipy.ndimage import distance_transform_edt
@@ -12,6 +11,7 @@ from filament_toolbox.lib.filter import Filter
 from filament_toolbox.lib.filter import FilterWithSE
 
 try:
+    import cv2
     from pyhjs import PyHJS, BinaryFrame
 except Exception as e:
     print(f"Could not import PyHJS: {e}")
@@ -53,10 +53,10 @@ class RemoveSmallObjects(Filter):
 
     def __init__(self, input_image):
         super().__init__(input_image)
-        self.min_size = 64
+        self.max_size = 64
 
     def run(self):
-        self.result = remove_small_objects(self.image, min_size=self.min_size)
+        self.result = remove_small_objects(self.image, max_size=self.max_size)
 
 
 class Skeletonize(Filter):
@@ -79,9 +79,6 @@ class HamiltonJacobiSkeleton(Filter):
         self.use_anisotropic_diffusion = False
 
     def run(self):
-        print(
-            "HJS", "threshold", self.flux_threshold, "dilation", self.dilation
-        )
         hjs = PyHJS(self.flux_threshold, self.dilation)
         frame = BinaryFrame(self.image)
         hjs.compute(

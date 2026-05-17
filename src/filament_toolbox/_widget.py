@@ -60,19 +60,6 @@ def activate():
     print("Filament Toolbox activated")
 
 
-def measure_skeleton(viewer: "napari.viewer.Viewer"):
-    layer = viewer.layers.selection.active
-    if not isinstance(layer, Labels):
-        return
-    measure = MeasureSkeleton(layer.data)
-    measure.scale = layer.scale
-    measure.units = layer.units
-    measure.run()
-    table = TableView(measure.result)
-    viewer.window.add_dock_widget(table)
-    viewer.add_labels(measure.result_image)
-
-
 def rgb_to_8bit(viewer: "napari.viewer.Viewer"):
     layer = viewer.layers.selection.active
     name = layer.name + " 8bit"
@@ -336,12 +323,9 @@ class AnisotropicDiffusionFilterWidget(SimpleWidget):
         if len(steps) < 3:
             steps = (1, steps[0], steps[1])
         self.operation.step = steps
-        worker = create_worker(
-            self.operation.run,
-            _progress={"desc": "Applying Anisotropic Diffusion Filter..."},
+        self.runOperationInThread(
+            "Applying Anisotropic Diffusion Filter...", self.displayResult
         )
-        worker.finished.connect(self.displayResult)
-        worker.start()
 
     def displayResult(self):
         name = self.imageLayer.name + " anisodiff"
@@ -355,12 +339,14 @@ class MeasureSkeletonWidget(SimpleWidget):
 
     def getOptions(self):
         options = Options("Filament Toolbox", "measure_skeleton")
-        options.addLabels()
+        options.addImage()
         return options
 
     def apply(self):
-        self.imageLayer = self.widget.getImageLayer("labels")
+        self.imageLayer = self.widget.getImageLayer("image")
         self.operation = MeasureSkeleton(self.imageLayer.data)
+        self.operation.scale = self.imageLayer.scale
+        self.operation.units = self.imageLayer.units
         self.runOperationInThread(
             "Measuring Skeleton...", callback=self.displayResult
         )
@@ -423,11 +409,9 @@ class IsotropicResamplingWidget(SimpleWidget):
         if isinstance(scale, np.ndarray):
             scale = scale.tolist()
         self.operation = IsotropicResampling(self.imageLayer.data, scale)
-        worker = create_worker(
-            self.operation.run, _progress={"desc": "Isotropic Resampling..."}
+        self.runOperationInThread(
+            "Isotropic Resampling...", callback=self.displayResult
         )
-        worker.finished.connect(self.displayResult)
-        worker.start()
 
     def displayResult(self):
         name = self.imageLayer.name + " isotropic"
@@ -479,11 +463,9 @@ class MedianFilterWidget(SimpleWidget):
         )
         self.operation.footprint = footprint
         self.operation.mode = self.options.value("mode")
-        worker = create_worker(
-            self.operation.run, _progress={"desc": "Applying Median..."}
+        self.runOperationInThread(
+            "Applying Median Filter...", callback=self.displayResult
         )
-        worker.finished.connect(self.displayResult)
-        worker.start()
 
     @classmethod
     def getFootprintFunction(cls, footprintText, footprintRadius=1):
@@ -520,12 +502,9 @@ class RollingBallWidget(SimpleWidget):
         self.imageLayer = self.widget.getImageLayer("image")
         self.operation = RollingBall(self.imageLayer.data)
         self.operation.radius = self.options.value("radius")
-        print("radius", self.operation.radius)
-        worker = create_worker(
-            self.operation.run, _progress={"desc": "Applying Rolling Ball..."}
+        self.runOperationInThread(
+            "Applying Rolling Ball...", callback=self.displayResult
         )
-        worker.finished.connect(self.displayResult)
-        worker.start()
 
     def displayResult(self):
         name = self.imageLayer.name + " RollingBall"
@@ -810,11 +789,9 @@ class FrangiFilterWidget(RidgeFilterWidget):
         self.operation.gamma = gamma
         self.operation.black_ridges = self.options.value("black ridges")
         self.operation.mode = self.options.value("mode")
-        worker = create_worker(
-            self.operation.run, _progress={"desc": "Applying Frangi Filter..."}
+        self.runOperationInThread(
+            "Applying Frangi Filter...", self.displayResult
         )
-        worker.finished.connect(self.displayResult)
-        worker.start()
 
     def displayResult(self):
         name = self.imageLayer.name + " Frangi"
@@ -843,11 +820,9 @@ class SatoFilterWidget(RidgeFilterWidget):
         self.operation.sigmas = self.sigmas
         self.operation.black_ridges = self.options.value("black ridges")
         self.operation.mode = self.options.value("mode")
-        worker = create_worker(
-            self.operation.run, _progress={"desc": "Applying Sato Filter..."}
+        self.runOperationInThread(
+            "Applying Sato Filter...", self.displayResult
         )
-        worker.finished.connect(self.displayResult)
-        worker.start()
 
     def displayResult(self):
         name = self.imageLayer.name + " Sato"
@@ -882,12 +857,9 @@ class MeijeringFilterWidget(RidgeFilterWidget):
         self.operation.alpha = alpha
         self.operation.black_ridges = self.options.value("black ridges")
         self.operation.mode = self.options.value("mode")
-        worker = create_worker(
-            self.operation.run,
-            _progress={"desc": "Applying Meijering Filter..."},
+        self.runOperationInThread(
+            "Applying Meijering Filter...", self.displayResult
         )
-        worker.finished.connect(self.displayResult)
-        worker.start()
 
     def displayResult(self):
         name = self.imageLayer.name + " Meijering"
@@ -918,11 +890,7 @@ class DilationWidget(MorphologySimpleWidget):
             self.imageLayer.data.ndim,
         )
         self.operation.footprint = footprint
-        worker = create_worker(
-            self.operation.run, _progress={"desc": "Applying dilation..."}
-        )
-        worker.finished.connect(self.displayResult)
-        worker.start()
+        self.runOperationInThread("Applying Dilation...", self.displayResult)
 
     def displayResult(self):
         name = self.imageLayer.name + " dilation"
@@ -953,11 +921,7 @@ class ClosingWidget(MorphologySimpleWidget):
             self.imageLayer.data.ndim,
         )
         self.operation.footprint = footprint
-        worker = create_worker(
-            self.operation.run, _progress={"desc": "Applying closing..."}
-        )
-        worker.finished.connect(self.displayResult)
-        worker.start()
+        self.runOperationInThread("Applying Closing...", self.displayResult)
 
     def displayResult(self):
         name = self.imageLayer.name + " close"
@@ -991,11 +955,7 @@ class LabelWidget(SimpleWidget):
         if self.imageLayer.data.ndim == 2 and connectivity == 3:
             connectivity = 2
         self.operation.connectivity = connectivity
-        worker = create_worker(
-            self.operation.run, _progress={"desc": "Labeling..."}
-        )
-        worker.finished.connect(self.displayResult)
-        worker.start()
+        self.runOperationInThread("Labeling...", self.displayResult)
 
     def displayResult(self):
         name = self.imageLayer.name + " labels"
@@ -1013,124 +973,53 @@ class LabelWidget(SimpleWidget):
         )
 
 
-class RemoveSmallObjectsWidget(ToolboxWidget):
+class RemoveSmallObjectsWidget(SimpleWidget):
 
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__(viewer)
-        self.min_size = 64
-        self.min_size_input = None
-        self.create_layout()
-        self.label_combo_boxes.append(self.label_layer_combo_box)
 
-    def create_layout(self):
-        main_layout = QVBoxLayout()
-        input_layer_label, self.label_layer_combo_box = (
-            WidgetTool.getComboInput(
-                self,
-                "image:",
-                self.label_layers,
-            )
+    def getOptions(self):
+        options = Options(
+            "Filament Toolbox", optionsName="remove_small_objects"
         )
-        min_size_label, self.min_size_input = WidgetTool.getLineInput(
-            self,
-            "min. size:",
-            self.min_size,
-            self.field_width,
-            self.min_size_changed,
-        )
-        apply_button = QPushButton("&Apply")
-        apply_button.clicked.connect(self.on_apply_button_clicked)
-        layer_layout = QHBoxLayout()
-        min_size_layout = QHBoxLayout()
-        button_layout = QHBoxLayout()
+        options.addLabels()
+        options.addInt("max. size", value=64)
+        options.load()
+        return options
 
-        layer_layout.addWidget(input_layer_label)
-        layer_layout.addWidget(self.label_layer_combo_box)
-        min_size_layout.addWidget(min_size_label)
-        min_size_layout.addWidget(self.min_size_input)
-        button_layout.addWidget(apply_button)
-
-        main_layout.addLayout(layer_layout)
-        main_layout.addLayout(min_size_layout)
-        main_layout.addLayout(button_layout)
-
-        self.setLayout(main_layout)
-
-    def min_size_changed(self):
-        pass
-
-    def on_apply_button_clicked(self):
-        text = self.label_layer_combo_box.currentText()
-        self.input_layer = self.napari_util.getLayerWithName(text)
-        min_size = int(self.min_size_input.text().strip())
-        self.filter = RemoveSmallObjects(self.input_layer.data)
-        self.filter.min_size = min_size
-        worker = create_worker(
-            self.filter.run, _progress={"desc": "Removing small objects..."}
-        )
-        worker.finished.connect(self.on_filter_finished)
-        worker.start()
-
-    def on_filter_finished(self):
-        name = self.input_layer.name + " small objects removed"
-        self.viewer.add_labels(
-            self.filter.result,
-            name=name,
-            scale=self.input_layer.scale,
-            units=self.input_layer.units,
-            blending="additive",
+    def apply(self):
+        self.imageLayer = self.widget.getImageLayer("labels")
+        self.operation = RemoveSmallObjects(self.imageLayer.data)
+        self.operation.min_size = self.options.value("max. size")
+        self.runOperationInThread(
+            "Removing small objects...", self.displayResult
         )
 
+    def displayResult(self):
+        name = self.imageLayer.name + " small objects removed"
+        self.displayLabels(name)
 
-class ClearBorderWidget(ToolboxWidget):
+
+class ClearBorderWidget(SimpleWidget):
 
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__(viewer)
-        self.create_layout()
-        self.label_combo_boxes.append(self.label_layer_combo_box)
 
-    def create_layout(self):
-        main_layout = QVBoxLayout()
-        input_layer_label, self.label_layer_combo_box = (
-            WidgetTool.getComboInput(
-                self,
-                "image:",
-                self.label_layers,
-            )
+    def getOptions(self):
+        options = Options("Filament toolbox", "clear border")
+        options.addLabels()
+        return options
+
+    def apply(self):
+        self.imageLayer = self.widget.getImageLayer("labels")
+        self.operation = ClearBorder(self.imageLayer.data)
+        self.runOperationInThread(
+            "Running Clear Border...", self.displayResult
         )
-        apply_button = QPushButton("&Apply")
-        apply_button.clicked.connect(self.on_apply_button_clicked)
-        layer_layout = QHBoxLayout()
-        button_layout = QHBoxLayout()
 
-        layer_layout.addWidget(input_layer_label)
-        layer_layout.addWidget(self.label_layer_combo_box)
-        button_layout.addWidget(apply_button)
-
-        main_layout.addLayout(layer_layout)
-        main_layout.addLayout(button_layout)
-
-        self.setLayout(main_layout)
-
-    def on_apply_button_clicked(self):
-        text = self.label_layer_combo_box.currentText()
-        self.input_layer = self.napari_util.getLayerWithName(text)
-        self.filter = ClearBorder(self.input_layer.data)
-        worker = create_worker(
-            self.filter.run, _progress={"desc": "Clearing the border..."}
-        )
-        worker.finished.connect(self.on_filter_finished)
-        worker.start()
-
-    def on_filter_finished(self):
-        name = self.input_layer.name + " cleared border"
-        self.viewer.add_labels(
-            self.filter.result,
-            name=name,
-            scale=self.input_layer.scale,
-            units=self.input_layer.units,
-            blending="additive",
-        )
+    def displayResult(self):
+        name = self.imageLayer.name + " cleared border"
+        self.displayLabels(name)
 
 
 class SkeletonizeWidget(ToolboxWidget):
@@ -1211,7 +1100,7 @@ class SkeletonizeWidget(ToolboxWidget):
 
     def on_filter_finished(self):
         name = self.input_layer.name + " skeleton-" + self.filter.method
-        self.viewer.add_labels(
+        self.viewer.add_image(
             self.filter.result,
             name=name,
             scale=self.input_layer.scale,
@@ -1220,104 +1109,35 @@ class SkeletonizeWidget(ToolboxWidget):
         )
 
 
-class HamiltonJacobiSkeletonizeWidget(ToolboxWidget):
+class HamiltonJacobiSkeletonizeWidget(SimpleWidget):
 
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__(viewer)
-        self.flux_threshold = 2.5  # gamma
-        self.dilation = 1.5  # epsilon
-        self.use_anisotropic_diffusion = False
-        self.flux_threshold_input = None
-        self.dilation_input = None
-        self.use_anisotropic_diffusion_checkbox = None
-        self.create_layout()
-        self.label_combo_boxes.append(self.label_layer_combo_box)
 
-    def create_layout(self):
-        main_layout = QVBoxLayout()
-        input_layer_label, self.label_layer_combo_box = (
-            WidgetTool.getComboInput(
-                self,
-                "image:",
-                self.label_layers,
-            )
+    def getOptions(self):
+        options = Options("Filament Toolbox", "hamilton_jacobi_skeletonize")
+        options.addLabels()
+        options.addFloat("flux threshold", value=2.5)
+        options.addFloat("dilation", value=1.5)
+        options.addBool("use anisotropic diffusion", value=False)
+        options.load()
+        return options
+
+    def apply(self):
+        self.imageLayer = self.widget.getImageLayer("labels")
+        self.operation = HamiltonJacobiSkeleton(self.imageLayer.data)
+        self.operation.flux_threshold = self.options.value("flux threshold")
+        self.operation.dilation = self.options.value("dilation")
+        self.operation.use_anisotropic_diffusion = self.options.value(
+            "use_anisotropic_diffusion"
         )
-        flux_threshold_label, self.flux_threshold_input = (
-            WidgetTool.getLineInput(
-                self,
-                "flux threshold:",
-                self.flux_threshold,
-                self.field_width,
-                self.flux_threshold_changed,
-            )
+        self.runOperationInThread(
+            "Calculating Hamilton Jacobi Skeleton...", self.displayResult
         )
-        dilation_label, self.dilation_input = WidgetTool.getLineInput(
-            self,
-            "dilation:",
-            self.dilation,
-            self.field_width,
-            self.dilation_changed,
-        )
-        self.use_anisotropic_diffusion_checkbox = QCheckBox(
-            "use anisotropic diffusion"
-        )
-        apply_button = QPushButton("&Apply")
-        apply_button.clicked.connect(self.on_apply_button_clicked)
-        layer_layout = QHBoxLayout()
-        flux_layout = QHBoxLayout()
-        dilation_layout = QHBoxLayout()
-        button_layout = QHBoxLayout()
 
-        layer_layout.addWidget(input_layer_label)
-        layer_layout.addWidget(self.label_layer_combo_box)
-        flux_layout.addWidget(flux_threshold_label)
-        flux_layout.addWidget(self.flux_threshold_input)
-        dilation_layout.addWidget(dilation_label)
-        dilation_layout.addWidget(self.dilation_input)
-        button_layout.addWidget(apply_button)
-
-        main_layout.addLayout(layer_layout)
-        main_layout.addLayout(flux_layout)
-        main_layout.addLayout(dilation_layout)
-        main_layout.addWidget(self.use_anisotropic_diffusion_checkbox)
-        main_layout.addLayout(button_layout)
-
-        self.setLayout(main_layout)
-
-    def flux_threshold_changed(self):
-        pass
-
-    def dilation_changed(self):
-        pass
-
-    def on_apply_button_clicked(self):
-        text = self.label_layer_combo_box.currentText()
-        self.input_layer = self.napari_util.getLayerWithName(text)
-        flux_threshold = float(self.flux_threshold_input.text().strip())
-        dilation_parameter = float(self.dilation_input.text().strip())
-        use_anisotropic_diffusion = (
-            self.use_anisotropic_diffusion_checkbox.isChecked()
-        )
-        self.filter = HamiltonJacobiSkeleton(self.input_layer.data)
-        self.filter.flux_threshold = flux_threshold
-        self.filter.dilation = dilation_parameter
-        self.filter.use_anisotropic_diffusion = use_anisotropic_diffusion
-        worker = create_worker(
-            self.filter.run,
-            _progress={"desc": "Hamilton-Jacobi Skeletonizing..."},
-        )
-        worker.finished.connect(self.on_filter_finished)
-        worker.start()
-
-    def on_filter_finished(self):
-        name = self.input_layer.name + " HJS"
-        self.viewer.add_labels(
-            self.filter.result,
-            name=name,
-            scale=self.input_layer.scale,
-            units=self.input_layer.units,
-            blending="additive",
-        )
+    def displayResult(self):
+        name = self.imageLayer.name + " HJS"
+        self.displayLabels(name)
 
 
 class PixelClassifierWidget(ToolboxWidget):
@@ -1550,73 +1370,45 @@ class BrightestPathTracingWidget(SimpleWidget):
             self.imageLayer.data, points.data
         )
         self.operation.method = self.options.value("method")
-        worker = create_worker(
-            self.operation.run, _progress={"desc": "Tracing Brightest Path..."}
+        self.runOperationInThread(
+            "Tracing Brightest Path...", self.displayResult
         )
-        worker.finished.connect(self.displayResult)
-        worker.start()
 
     def displayResult(self):
         name = self.imageLayer.name + " traces"
         self.displayLabels(name)
 
 
-class MetricsWidget(ToolboxWidget):
+class MetricsWidget(SimpleWidget):
 
     def __init__(self, viewer: "napari.viewer.Viewer"):
-        super().__init__(viewer)
-        self.labels1_layer = None
-        self.labels2_layer = None
-        self.labels1_combo_box = None
-        self.labels2_combo_box = None
+        super().__init__(viewer, sameRowSet={"clDice"})
         self.metrics = {"Dice": Dice, "clDice": CenterlineDice}
-        self.checked = {"Dice": True, "clDice": True}
-        self.metrics_checkboxes = {}
-        self.create_layout()
-        self.label_combo_boxes.append(self.labels1_combo_box)
-        self.label_combo_boxes.append(self.labels2_combo_box)
         self.table = {}
         self.results = {}
+        self.layer1 = None
+        self.layer2 = None
 
-    def create_layout(self):
-        main_layout = QVBoxLayout()
-        labels1_label, self.labels1_combo_box = WidgetTool.getComboInput(
-            self,
-            "labels 1:",
-            self.label_layers,
-        )
-        labels2_label, self.labels2_combo_box = WidgetTool.getComboInput(
-            self,
-            "labels 2:",
-            self.label_layers,
-        )
-        for key, value in self.checked.items():
-            cb = QCheckBox(key)
-            cb.setChecked(value)
-            self.metrics_checkboxes[key] = cb
-        apply_button = QPushButton("&Apply")
-        apply_button.clicked.connect(self.on_apply_button_clicked)
-        labels1_layout = QHBoxLayout()
-        labels2_layout = QHBoxLayout()
-        checkboxes_layout = QVBoxLayout()
-        button_layout = QHBoxLayout()
-        labels1_layout.addWidget(labels1_label)
-        labels1_layout.addWidget(self.labels1_combo_box)
-        labels2_layout.addWidget(labels2_label)
-        labels2_layout.addWidget(self.labels2_combo_box)
-        for cb in self.metrics_checkboxes.values():
-            checkboxes_layout.addWidget(cb)
-        button_layout.addWidget(apply_button)
-        main_layout.addLayout(labels1_layout)
-        main_layout.addLayout(labels2_layout)
-        main_layout.addLayout(checkboxes_layout)
-        checkboxes_layout.addLayout(button_layout)
-        self.setLayout(main_layout)
+    def getOptions(self):
+        options = Options("Filament Toolbox", "metrics")
+        options.addLabels(name="labels 1")
+        options.addLabels(name="labels 2")
+        options.addBool("Dice")
+        options.addBool("clDice")
+        options.load()
+        return options
 
-    def on_apply_button_clicked(self):
-        for key, cb in self.metrics_checkboxes.items():
-            self.checked[key] = cb.isChecked()
-        self.calculate_metrics()
+    def apply(self):
+        self.layer1 = self.widget.getImageLayer("labels 1")
+        self.layer2 = self.widget.getImageLayer("labels 2")
+        worker = create_worker(
+            self.calculate_metrics,
+            _progress={"desc": "Calculating metrics..."},
+        )
+        worker.finished.connect(self.displayResult)
+        worker.start()
+
+    def displayResult(self):
         if "Metrics" in self.viewer.window.dock_widgets.keys():
             self.viewer.window.remove_dock_widget(
                 self.viewer.window.dock_widgets["Metrics"]
@@ -1627,22 +1419,16 @@ class MetricsWidget(ToolboxWidget):
         )
 
     def calculate_metrics(self):
-        text = self.labels1_combo_box.currentText()
-        self.labels1_layer = self.napari_util.getLayerWithName(text)
-        text = self.labels2_combo_box.currentText()
-        self.labels2_layer = self.napari_util.getLayerWithName(text)
         if not "image1" in self.results.keys():
             self.results["image1"] = []
-        self.results["image1"].append(text)
+        self.results["image1"].append(self.layer1.name)
         if not "image2" in self.results.keys():
             self.results["image2"] = []
-        self.results["image2"].append(text)
-        for key, value in self.checked.items():
-            if value:
+        self.results["image2"].append(self.layer2.name)
+        for key, value in self.metrics.items():
+            if self.options.value(key):
                 metric_class = self.metrics[key]
-                metric = metric_class(
-                    self.labels1_layer.data, self.labels2_layer.data
-                )
+                metric = metric_class(self.layer1.data, self.layer2.data)
                 metric.calculate()
                 if not key in self.results.keys():
                     self.results[key] = []
@@ -1665,12 +1451,9 @@ class EuclideanDistanceTransformWidget(SimpleWidget):
     def apply(self):
         self.imageLayer = self.widget.getImageLayer("image")
         self.operation = EuclideanDistanceTransform(self.imageLayer.data)
-        worker = create_worker(
-            self.operation.run,
-            _progress={"desc": "Applying Euclidean Distance Transform..."},
+        self.runOperationInThread(
+            "Applying Euclidean Distance Transform...", self.displayResult
         )
-        worker.finished.connect(self.displayResult)
-        worker.start()
 
     def displayResult(self):
         name = self.imageLayer.name + " edt"
@@ -1700,12 +1483,9 @@ class LocalThicknessWidget(SimpleWidget):
             )
             self.operation.spacing = self.imageLayer.scale
             self.operation.scale = 1
-        worker = create_worker(
-            self.operation.run,
-            _progress={"desc": "Calculating Local Thickness..."},
+        self.runOperationInThread(
+            "Calculating Local Thickness...", self.displayResult
         )
-        worker.finished.connect(self.displayResult)
-        worker.start()
 
     def displayResult(self):
         name = self.imageLayer.name + " thickness"
@@ -1779,12 +1559,7 @@ class MeasureLabelsWidget(SimpleWidget):
                 if self.regionPropOptions.value(key)
             ]
         )
-        worker = create_worker(
-            self.operation.run,
-            _progress={"desc": "Measuring Labels..."},
-        )
-        worker.finished.connect(self.displayResult)
-        worker.start()
+        self.runOperationInThread("Measuring Labels...", self.displayResult)
 
     def displayResult(self):
         self.viewer.window.add_dock_widget(
