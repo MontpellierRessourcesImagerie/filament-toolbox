@@ -3,10 +3,10 @@ name = "filament-toolbox"
 dynamic = ["version"]
 description = "A number of tools useful for segmenting and analyzing filaments."
 readme = "README.md"
-license = {file = "LICENSE"}
+license = { file = "LICENSE" }
 authors = [
-  {name = "Volker Baecker"},
-  {email = "volker.baecker@mri.cnrs.fr"},
+    { name = "Volker Baecker" },
+    { email = "volker.baecker@mri.cnrs.fr" },
 ]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
@@ -53,10 +53,10 @@ all = ["napari[all]"]
 [dependency-groups]
 testing = [
     "tox",
-    "pytest",  # https://docs.pytest.org/en/latest/contents.html
-    "pytest-cov",  # https://pytest-cov.readthedocs.io/en/latest/
-    "pytest-qt",  # https://pytest-qt.readthedocs.io/en/latest/
-    "napari[qt]",  # test with napari's default Qt bindings
+    "pytest", # https://docs.pytest.org/en/latest/contents.html
+    "pytest-cov", # https://pytest-cov.readthedocs.io/en/latest/
+    "pytest-qt", # https://pytest-qt.readthedocs.io/en/latest/
+    "napari[qt]", # test with napari's default Qt bindings
 ]
 
 [project.entry-points."napari.manifest"]
@@ -64,7 +64,7 @@ filament-toolbox = "filament_toolbox:napari.yaml"
 
 [project.urls]
 "Bug Tracker" = "https://github.com/MontpellierRessourcesImagerie/filament-toolbox/issues"
-"Documentation" = "https://github.com/MontpellierRessourcesImagerie/filament-toolbox#README.md"
+"Documentation" = "https://github.com/MontpellierRessourcesImagerie/filament-toolbox/wiki"
 "Source Code" = "https://github.com/MontpellierRessourcesImagerie/filament-toolbox"
 "User Support" = "https://github.com/MontpellierRessourcesImagerie/filament-toolbox/issues"
 

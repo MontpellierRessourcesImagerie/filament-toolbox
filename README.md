@@ -13,6 +13,7 @@ Tools useful for segmenting and analyzing filaments.
 [![Copier](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/copier-org/copier/master/img/badge/badge-grayscale-inverted-border-purple.json)](https://github.com/copier-org/copier)
 
 A number of tools useful for segmenting and analyzing filaments.
+Please check the [wiki](https://github.com/MontpellierRessourcesImagerie/filament-toolbox/wiki) for more information.
 
 ----------------------------------
 
@@ -40,14 +41,11 @@ If napari is not already installed, you can install `filament-toolbox` with napa
 pip install "filament-toolbox[all]"
 ```
 
-
 To install latest development version :
 
 ```
 pip install git+https://github.com/MontpellierRessourcesImagerie/filament-toolbox.git
 ```
-
-
 
 ## Contributing
 
@@ -64,20 +62,32 @@ Distributed under the terms of the [MIT] license,
 If you encounter any problems, please [file an issue] along with a detailed description.
 
 [napari]: https://github.com/napari/napari
+
 [copier]: https://copier.readthedocs.io/en/stable/
+
 [@napari]: https://github.com/napari
+
 [MIT]: http://opensource.org/licenses/MIT
+
 [BSD-3]: http://opensource.org/licenses/BSD-3-Clause
+
 [GNU GPL v3.0]: http://www.gnu.org/licenses/gpl-3.0.txt
+
 [GNU LGPL v3.0]: http://www.gnu.org/licenses/lgpl-3.0.txt
+
 [Apache Software License 2.0]: http://www.apache.org/licenses/LICENSE-2.0
+
 [Mozilla Public License 2.0]: https://www.mozilla.org/media/MPL/2.0/index.txt
+
 [napari-plugin-template]: https://github.com/napari/napari-plugin-template
 
 [file an issue]: https://github.com/MontpellierRessourcesImagerie/filament-toolbox/issues
 
 [napari]: https://github.com/napari/napari
+
 [tox]: https://tox.readthedocs.io/en/latest/
+
 [pip]: https://pypi.org/project/pip/
+
 [PyPI]: https://pypi.org/
 
