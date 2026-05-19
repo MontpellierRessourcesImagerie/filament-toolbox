@@ -4,6 +4,9 @@ from scipy.ndimage import distance_transform_edt
 from skimage.measure import label
 from skimage.morphology import closing
 from skimage.morphology import dilation
+from skimage.morphology import erosion
+from skimage.morphology import medial_axis
+from skimage.morphology import opening
 from skimage.morphology import remove_small_objects
 from skimage.morphology import skeletonize
 
@@ -28,6 +31,17 @@ class Dilation(FilterWithSE):
         )
 
 
+class Erosion(FilterWithSE):
+
+    def __init__(self, input_image):
+        super().__init__(input_image)
+
+    def run(self):
+        self.result = erosion(
+            self.image, footprint=self.footprint, mode=self.mode
+        )
+
+
 class Closing(FilterWithSE):
 
     def __init__(self, input_image):
@@ -35,6 +49,17 @@ class Closing(FilterWithSE):
 
     def run(self):
         self.result = closing(
+            self.image, footprint=self.footprint, mode=self.mode
+        )
+
+
+class Opening(FilterWithSE):
+
+    def __init__(self, input_image):
+        super().__init__(input_image)
+
+    def run(self):
+        self.result = opening(
             self.image, footprint=self.footprint, mode=self.mode
         )
 
@@ -57,6 +82,24 @@ class RemoveSmallObjects(Filter):
 
     def run(self):
         self.result = remove_small_objects(self.image, max_size=self.max_size)
+
+
+class MedialAxisTransform(Filter):
+
+    def __init__(self, inputImage):
+        super().__init__(inputImage)
+        self.returnDistances = False
+        self.distances = None
+
+    def run(self):
+        if not self.returnDistances:
+            self.result = medial_axis(
+                self.image, return_distance=self.returnDistances
+            )
+        else:
+            self.result, self.distances = medial_axis(
+                self.image, return_distance=self.returnDistances
+            )
 
 
 class Skeletonize(Filter):

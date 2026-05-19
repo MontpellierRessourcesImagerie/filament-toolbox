@@ -30,6 +30,9 @@ contributions:
     - id: filament-toolbox.edt
       python_name: filament_toolbox:EuclideanDistanceTransformWidget
       title: Euclidean Distance Transform
+    - id: filament-toolbox.erode
+      python_name: filament_toolbox:ErosionWidget
+      title: Erode
     - id: filament-toolbox.frangi_filter
       python_name: filament_toolbox:FrangiFilterWidget
       title: Frangi Filter
@@ -51,6 +54,9 @@ contributions:
     - id: filament-toolbox.measure_skeleton
       python_name: filament_toolbox:MeasureSkeletonWidget
       title: Measure Skeleton
+    - id: filament-toolbox.subtract_image
+      python_name: filament_toolbox:SubtractImageWidget
+      title: Subtract Image
     - id: filament-toolbox.median_filter
       python_name: filament_toolbox:MedianFilterWidget
       title: Median Filter
@@ -60,6 +66,9 @@ contributions:
     - id: filament-toolbox.metrics_calculation
       python_name: filament_toolbox:MetricsWidget
       title: Metrics Calculation
+    - id: filament-toolbox.open
+      python_name: filament_toolbox:OpeningWidget
+      title: open
     - id: filament-toolbox.pixel_classifier
       python_name: filament_toolbox:PixelClassifierWidget
       title: Pixel Classifier
@@ -110,6 +119,8 @@ contributions:
       display_name: Dilate
     - command: filament-toolbox.edt
       display_name: Euclidean Distance Transform
+    - command: filament-toolbox.erode
+      display_name: Erode
     - command: filament-toolbox.frangi_filter
       display_name: Frangi Filter
     - command: filament-toolbox.gaussian_filter
@@ -132,6 +143,8 @@ contributions:
       display_name: Meijering Filter
     - command: filament-toolbox.metrics_calculation
       display_name: Metrics Calculation
+    - command: filament-toolbox.open
+      display_name: Open
     - command: filament-toolbox.pixel_classifier
       display_name: Pixel Classifier
     - command: filament-toolbox.remove_small_objects
@@ -140,6 +153,8 @@ contributions:
       display_name: Sato Filter
     - command: filament-toolbox.skeletonize
       display_name: Skeletonize
+    - command: filament-toolbox.subtract_image
+      display_name: Subtract Image
     - command: filament-toolbox.threshold
       display_name: Threshold
   menus:
@@ -160,8 +175,10 @@ contributions:
       - command: filament-toolbox.close
       - command: filament-toolbox.dilate
       - command: filament-toolbox.edt
+      - command: filament-toolbox.erode
       - command: filament-toolbox.label
       - command: filament-toolbox.local_thickness
+      - command: filament-toolbox.open
       - command: filament-toolbox.remove_small_objects
     noise:
       - command: filament-toolbox.anisotropic_diffusion_filter
@@ -184,9 +201,12 @@ contributions:
       - command: filament-toolbox.threshold
     napari/layers/data:
       - submenu: convert
+      - submenu: image
     convert:
       - command: filament-toolbox.rgb_to_8bit
       - command: filament-toolbox.rgb_to_16bit
+    image:
+      - command: filament-toolbox.subtract_image
     napari/layers/transform:
       - submenu: sampling
     sampling:
@@ -210,3 +230,5 @@ contributions:
       label: Convert
     - id: sampling
       label: Sampling
+    - id: image
+      label: Image

@@ -30,6 +30,7 @@ from filament_toolbox.lib.filter import MedianFilter
 from filament_toolbox.lib.filter import MeijeringFilter
 from filament_toolbox.lib.filter import RollingBall
 from filament_toolbox.lib.filter import SatoFilter
+from filament_toolbox.lib.icalc import SubtractImage
 from filament_toolbox.lib.measure import MeasureLabels
 from filament_toolbox.lib.measure import MeasureSkeleton
 from filament_toolbox.lib.metric import CenterlineDice
@@ -37,10 +38,13 @@ from filament_toolbox.lib.metric import Dice
 from filament_toolbox.lib.ml import RandomForestPixelClassifier
 from filament_toolbox.lib.morphology import Closing
 from filament_toolbox.lib.morphology import Dilation
+from filament_toolbox.lib.morphology import Erosion
 from filament_toolbox.lib.morphology import EuclideanDistanceTransform
 from filament_toolbox.lib.morphology import HamiltonJacobiSkeleton
 from filament_toolbox.lib.morphology import Label
 from filament_toolbox.lib.morphology import LocalThickness
+from filament_toolbox.lib.morphology import MedialAxisTransform
+from filament_toolbox.lib.morphology import Opening
 from filament_toolbox.lib.morphology import RemoveSmallObjects
 from filament_toolbox.lib.morphology import Skeletonize
 from filament_toolbox.lib.napari_util import NapariUtil
@@ -418,6 +422,32 @@ class MedianFilterWidget(SimpleWidget):
         self.displayImage(name)
 
 
+class SubtractImageWidget(SimpleWidget):
+
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer)
+
+    def getOptions(self):
+        options = Options("Filament Toolbox", "subtract_image")
+        options.addImage("image 1")
+        options.addImage("image 2")
+        return options
+
+    def apply(self):
+        self.imageLayer = self.widget.getImageLayer("image 1")
+        otherImageLayer = self.widget.getImageLayer("image 2")
+        self.operation = SubtractImage(
+            self.imageLayer.data, otherImageLayer.data
+        )
+        self.runOperationInThread(
+            "Subtract Image...", callback=self.displayResult
+        )
+
+    def displayResult(self):
+        name = self.imageLayer.name + " subtract"
+        self.displayImage(name)
+
+
 class RollingBallWidget(SimpleWidget):
 
     def __init__(self, viewer: "napari.viewer.Viewer"):
@@ -590,14 +620,38 @@ class MeijeringFilterWidget(RidgeFilterWidget):
         self.displayImage(name)
 
 
-class DilationWidget(MorphologySimpleWidget):
+class MorphologyBasicOperationWidget(MorphologySimpleWidget):
 
-    def __init__(self, viewer: "napari.viewer.Viewer"):
+    def __init__(self, viewer: "napari.viewer.Viewer", sameRowSet=None):
         super().__init__(viewer, sameRowSet={"radius"})
+
+    @abstractmethod
+    def optionsName(self):
+        raise Exception(
+            "Abstract method optionsName of class MorphologyBasicOperationWidget called!"
+        )
+
+    @abstractmethod
+    def message(self):
+        raise Exception(
+            "Abstract method message of class MorphologyBasicOperationWidget called!"
+        )
+
+    @abstractmethod
+    def imageTitleAddition(self):
+        raise Exception(
+            "Abstract method imageTitleAddition of class MorphologyBasicOperationWidget called!"
+        )
+
+    @abstractmethod
+    def operationClass(self):
+        raise Exception(
+            "Abstract method operationClass of class MorphologyBasicOperationWidget called!"
+        )
 
     def getOptions(self):
         options = Options(
-            applicationName="Filament Toolbox", optionsName="dilate"
+            applicationName="Filament Toolbox", optionsName=self.optionsName()
         )
         options.addImage()
         self.addFootprintOptions(options)
@@ -606,7 +660,7 @@ class DilationWidget(MorphologySimpleWidget):
 
     def apply(self):
         self.imageLayer = self.widget.getImageLayer("image")
-        self.operation = Dilation(self.imageLayer.data)
+        self.operation = self.operationClass()(self.imageLayer.data)
         self.operation.mode = self.options.value("mode")
         footprint = self.getFootprint(
             self.options.value("footprint"),
@@ -614,42 +668,83 @@ class DilationWidget(MorphologySimpleWidget):
             self.imageLayer.data.ndim,
         )
         self.operation.footprint = footprint
-        self.runOperationInThread("Applying Dilation...", self.displayResult)
+        self.runOperationInThread(self.message(), self.displayResult)
 
     def displayResult(self):
-        name = self.imageLayer.name + " dilation"
+        name = self.imageLayer.name + " " + self.imageTitleAddition()
         self.displayImage(name)
 
 
-class ClosingWidget(MorphologySimpleWidget):
+class DilationWidget(MorphologyBasicOperationWidget):
 
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__(viewer, sameRowSet={"radius"})
 
-    def getOptions(self):
-        options = Options(
-            applicationName="Filament Toolbox", optionsName="close"
-        )
-        options.addImage()
-        self.addFootprintOptions(options)
-        options.load()
-        return options
+    def imageTitleAddition(self):
+        return "dilation"
 
-    def apply(self):
-        self.imageLayer = self.widget.getImageLayer("image")
-        self.operation = Closing(self.imageLayer.data)
-        self.operation.mode = self.options.value("mode")
-        footprint = self.getFootprint(
-            self.options.value("footprint"),
-            self.options.value("radius"),
-            self.imageLayer.data.ndim,
-        )
-        self.operation.footprint = footprint
-        self.runOperationInThread("Applying Closing...", self.displayResult)
+    def message(self):
+        return "Applying Dilation..."
 
-    def displayResult(self):
-        name = self.imageLayer.name + " close"
-        self.displayImage(name)
+    def operationClass(self):
+        return Dilation
+
+    def optionsName(self):
+        return "dilate"
+
+
+class ErosionWidget(MorphologyBasicOperationWidget):
+
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer, sameRowSet={"radius"})
+
+    def imageTitleAddition(self):
+        return "erosion"
+
+    def message(self):
+        return "Applying Erosion..."
+
+    def operationClass(self):
+        return Erosion
+
+    def optionsName(self):
+        return "erode"
+
+
+class ClosingWidget(MorphologyBasicOperationWidget):
+
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer, sameRowSet={"radius"})
+
+    def imageTitleAddition(self):
+        return "close"
+
+    def message(self):
+        return "Applying Closing..."
+
+    def operationClass(self):
+        return Closing
+
+    def optionsName(self):
+        return "close"
+
+
+class OpeningWidget(MorphologyBasicOperationWidget):
+
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer, sameRowSet={"radius"})
+
+    def imageTitleAddition(self):
+        return "open"
+
+    def message(self):
+        return "Applying Opening..."
+
+    def operationClass(self):
+        return Opening
+
+    def optionsName(self):
+        return "open"
 
 
 class LabelWidget(SimpleWidget):
@@ -959,6 +1054,37 @@ class LocalThicknessWidget(SimpleWidget):
     def displayResult(self):
         name = self.imageLayer.name + " thickness"
         self.displayImage(name, colormap="inferno")
+
+
+class MedialAxisTransformWidget(SimpleWidget):
+
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__(viewer)
+
+    def getOptions(self):
+        options = Options(
+            applicationName="Filament Toolbox", optionsName="mat"
+        )
+        options.addImage()
+        options.addBool("return distances", value=False)
+        options.load()
+        return options
+
+    def apply(self):
+        self.imageLayer = self.widget.getImageLayer("image")
+        self.operation = MedialAxisTransform(self.imageLayer.data)
+        self.operation.returnDistances = self.options.value("returnDistances")
+        self.runOperationInThread(
+            "Calculating Medial Axis...", self.displayResult
+        )
+
+    def displayResult(self):
+        name = self.imageLayer.name + " mat"
+        self.displayImage(name)
+        if self.options.value("return distances"):
+            self.operation.result = self.operation.distances
+            self.name = " edt"
+            self.displayImage(name, colormap="inferno")
 
 
 class MeasureLabelsWidget(SimpleWidget):

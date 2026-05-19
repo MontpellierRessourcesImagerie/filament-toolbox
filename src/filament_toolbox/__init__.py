@@ -12,6 +12,7 @@ from ._widget import BrightestPathTracingWidget
 from ._widget import ClearBorderWidget
 from ._widget import ClosingWidget
 from ._widget import DilationWidget
+from ._widget import ErosionWidget
 from ._widget import EuclideanDistanceTransformWidget
 from ._widget import FrangiFilterWidget
 from ._widget import GaussianFilterWidget
@@ -24,6 +25,7 @@ from ._widget import MeasureSkeletonWidget
 from ._widget import MedianFilterWidget
 from ._widget import MeijeringFilterWidget
 from ._widget import MetricsWidget
+from ._widget import OpeningWidget
 from ._widget import PixelClassifierWidget
 from ._widget import RemoveSmallObjectsWidget
 from ._widget import rgb_to_16bit
@@ -31,6 +33,7 @@ from ._widget import rgb_to_8bit
 from ._widget import RollingBallWidget
 from ._widget import SatoFilterWidget
 from ._widget import SkeletonizeWidget
+from ._widget import SubtractImageWidget
 from ._widget import ThresholdWidget
 
 __all__ = (
@@ -62,4 +65,7 @@ __all__ = (
     "LocalThicknessWidget",
     "MeasureLabelsWidget",
     "MeasureSkeletonWidget",
+    "ErosionWidget",
+    "OpeningWidget",
+    "SubtractImageWidget",
 )
