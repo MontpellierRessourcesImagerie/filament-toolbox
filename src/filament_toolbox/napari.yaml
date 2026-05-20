@@ -54,9 +54,9 @@ contributions:
     - id: filament-toolbox.measure_skeleton
       python_name: filament_toolbox:MeasureSkeletonWidget
       title: Measure Skeleton
-    - id: filament-toolbox.subtract_image
-      python_name: filament_toolbox:SubtractImageWidget
-      title: Subtract Image
+    - id: filament-toolbox.medial_axis_transform
+      python_name: filament_toolbox:MedialAxisTransformWidget
+      title: Medial Axis Transform
     - id: filament-toolbox.median_filter
       python_name: filament_toolbox:MedianFilterWidget
       title: Median Filter
@@ -93,6 +93,9 @@ contributions:
     - id: filament-toolbox.skeletonize
       python_name: filament_toolbox:SkeletonizeWidget
       title: Skeletonize
+    - id: filament-toolbox.subtract_image
+      python_name: filament_toolbox:SubtractImageWidget
+      title: Subtract Image
     - id: filament-toolbox.threshold
       python_name: filament_toolbox:ThresholdWidget
       title: Threshold
@@ -137,6 +140,8 @@ contributions:
       display_name: Measure Labels
     - command: filament-toolbox.measure_skeleton
       display_name: Measure Skeleton
+    - command: filament-toolbox.medial_axis_transform
+      display_name: Medial Axis Transform
     - command: filament-toolbox.median_filter
       display_name: Median Filter
     - command: filament-toolbox.meijering_filter
@@ -209,6 +214,7 @@ contributions:
       - command: filament-toolbox.subtract_image
     napari/layers/transform:
       - submenu: sampling
+      - command: filament-toolbox.medial_axis_transform
     sampling:
       - command: filament-toolbox.isotropic_resampling
   submenus:

@@ -1,6 +1,8 @@
+import kimimaro
 import localthickness as lt
 import numpy as np
 from scipy.ndimage import distance_transform_edt
+from skimage.draw import line_nd
 from skimage.measure import label
 from skimage.morphology import closing
 from skimage.morphology import dilation
@@ -90,8 +92,34 @@ class MedialAxisTransform(Filter):
         super().__init__(inputImage)
         self.returnDistances = False
         self.distances = None
+        self.methods = ["ridge of edf", "kimimaro (teasar)"]
+        self.method = "kimimaro (teasar)"
+
+        self.scale = 1.5
+        self.const = 300
+        self.pdrfScale = 100000
+        self.pdrfExponent = 4
+        self.somaAcceptanceThreshold = 3500
+        self.somaDetectionThreshold = 750
+        self.somaInvalidationConst = 300
+        self.somaInvalidationScale = 2
+
+        self.anisotropy = (1, 1, 1)
+        self.dustThreshold = 1000
+        self.fixBranching = True
+        self.fixBorders = True
+        self.fillHoles = False
+        self.fixAvocados = False
+        self.parallel = 1
+        self.skels = None
 
     def run(self):
+        if self.method == "ridge of edf":
+            self.runRidgeOfEDF()
+        else:
+            self.runKimimaro()
+
+    def runRidgeOfEDF(self):
         if not self.returnDistances:
             self.result = medial_axis(
                 self.image, return_distance=self.returnDistances
@@ -100,6 +128,44 @@ class MedialAxisTransform(Filter):
             self.result, self.distances = medial_axis(
                 self.image, return_distance=self.returnDistances
             )
+
+    def runKimimaro(self):
+        teasarParams = {
+            "scale": self.scale,
+            "const": self.const,  # physical units
+            "pdrf_scale": self.pdrfScale,
+            "pdrf_exponent": self.pdrfExponent,
+            "soma_acceptance_threshold": self.somaAcceptanceThreshold,  # physical units
+            "soma_detection_threshold": self.somaDetectionThreshold,  # physical units
+            "soma_invalidation_const": self.somaInvalidationConst,  # physical units
+            "soma_invalidation_scale": self.somaInvalidationScale,
+        }
+        self.skels = kimimaro.skeletonize(
+            self.image,
+            teasar_params=teasarParams,
+            anisotropy=self.anisotropy,
+            dust_threshold=self.dustThreshold,
+            fix_branching=self.fixBranching,
+            fix_borders=self.fixBorders,
+            fill_holes=self.fillHoles,
+            fix_avocados=self.fixAvocados,
+            parallel=self.parallel,
+        )
+        print("calculation finished")
+        self.result = np.zeros_like(self.image)
+        self.distances = np.zeros_like(self.image)
+        for labelID, skel in self.skels.items():
+            print("labelID:", labelID)
+            vertices = skel.vertices
+            radii = skel.radii
+            for edge in skel.edges:
+                line = line_nd(
+                    vertices[edge[0]],
+                    vertices[edge[1]],
+                    endpoint=True,
+                )
+                self.distances[line] = radii[edge[0]]  ## edge 0 or 1 ?
+                self.result[line] = labelID
 
 
 class Skeletonize(Filter):

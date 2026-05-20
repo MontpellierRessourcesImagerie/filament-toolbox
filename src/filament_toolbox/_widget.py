@@ -1005,9 +1005,7 @@ class EuclideanDistanceTransformWidget(SimpleWidget):
         super().__init__(viewer)
 
     def getOptions(self):
-        options = Options(
-            applicationName="Filament Toolbox", optionsName="edt"
-        )
+        options = Options("Filament Toolbox", "edt")
         options.addImage()
         options.load()
         return options
@@ -1060,20 +1058,127 @@ class MedialAxisTransformWidget(SimpleWidget):
 
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__(viewer)
+        self.kimimaroProps = {
+            "scale": 1.5,
+            "const": 300,
+            "pdrf scale": 100000,
+            "pdrf exponent": 4,
+            "soma acceptance threshold": 3500,
+            "soma detection threshold": 750,
+            "soma invalidation threshold": 300,
+            "soma invalidation scale": 2,
+            "dust threshold": 1000,
+            "fix branching": True,
+            "fix borders": True,
+            "fix avocados": False,
+            "fill holes": False,
+            "parallel": 1,
+        }
+        self.kimimaroOptions = self.getKimimaroOptions()
+        self.widget.addButton(
+            "kimimaro options", callback=self.kimimaroOptionsButtonPressed
+        )
 
     def getOptions(self):
-        options = Options(
-            applicationName="Filament Toolbox", optionsName="mat"
-        )
+        options = Options("Filament Toolbox", "mat")
         options.addImage()
+        options.addChoice(
+            "method",
+            choices=["ridge of edf", "kimimaro (teasar)"],
+            value="kimimaro (teasar)",
+        )
         options.addBool("return distances", value=False)
+        options.load()
+        return options
+
+    def getKimimaroOptions(self):
+        options = Options("Filament Toolbox", "kimimaro")
+        options.addFloat("scale", value=self.kimimaroProps["scale"])
+        options.addInt("const", value=self.kimimaroProps["const"])
+        options.addInt(
+            "pdrf scale", value=self.kimimaroProps["pdrf scale"]
+        )  # pdrf penalized distance from root field
+        options.addInt(
+            "pdrf exponent", value=self.kimimaroProps["pdrf exponent"]
+        )
+        options.addInt(
+            "soma acceptance threshold",
+            value=self.kimimaroProps["soma acceptance threshold"],
+        )
+        options.addInt(
+            "soma detection threshold",
+            value=self.kimimaroProps["soma detection threshold"],
+        )
+        options.addInt(
+            "soma invalidation threshold",
+            value=self.kimimaroProps["soma invalidation threshold"],
+        )
+        options.addInt(
+            "soma invalidation scale",
+            value=self.kimimaroProps["soma invalidation scale"],
+        )
+        options.addInt(
+            "dust threshold", value=self.kimimaroProps["dust threshold"]
+        )
+        options.addBool(
+            "fix branching", value=self.kimimaroProps["fix branching"]
+        )
+        options.addBool("fix borders", value=self.kimimaroProps["fix borders"])
+        options.addBool(
+            "fix avocados", value=self.kimimaroProps["fix avocados"]
+        )
+        options.addBool("fill holes", value=self.kimimaroProps["fill holes"])
+        options.addInt("parallel", value=self.kimimaroProps["parallel"])
         options.load()
         return options
 
     def apply(self):
         self.imageLayer = self.widget.getImageLayer("image")
         self.operation = MedialAxisTransform(self.imageLayer.data)
-        self.operation.returnDistances = self.options.value("returnDistances")
+        self.operation.method = self.options.value("method")
+        self.operation.returnDistances = self.options.value("return distances")
+        print("method", self.options.value("method"))
+        if self.options.value("method") == "ridge of edf":
+            self.applyRidgeOfEDF()
+        if self.options.value("method") == "kimimaro (teasar)":
+            self.applyKimiaro()
+
+    def applyRidgeOfEDF(self):
+        self.runOperationInThread(
+            "Calculating Medial Axis...", self.displayResult
+        )
+
+    def applyKimiaro(self):
+        self.kimimaroOptions = self.getKimimaroOptions()
+        self.operation.scale = self.kimimaroOptions.value("scale")
+        self.operation.const = self.kimimaroOptions.value("const")
+        self.operation.pdrfScale = self.kimimaroOptions.value("pdrf scale")
+        self.operation.pdrfExponent = self.kimimaroOptions.value(
+            "pdrf exponent"
+        )
+        self.operation.somaAcceptThreshold = self.kimimaroOptions.value(
+            "soma acceptance threshold"
+        )
+        self.operation.somaDetectionThreshold = self.kimimaroOptions.value(
+            "soma detection threshold"
+        )
+        self.operation.somaInvalidationThreshold = self.kimimaroOptions.value(
+            "soma invalidation threshold"
+        )
+        self.operation.somaInvalidationScale = self.kimimaroOptions.value(
+            "soma invalidation scale"
+        )
+        self.operation.anisotropy = list(self.imageLayer.scale)
+        self.operation.dustThreshold = self.kimimaroOptions.value(
+            "dust threshold"
+        )
+        self.operation.fixBranching = self.kimimaroOptions.value(
+            "fix branching"
+        )
+        self.operation.fixBorders = self.kimimaroOptions.value("fix borders")
+        self.operation.fillHoles = self.kimimaroOptions.value("fill holes")
+        self.operation.fixAvocados = self.kimimaroOptions.value("fix avocados")
+        self.operation.parallel = self.kimimaroOptions.value("parallel")
         self.runOperationInThread(
             "Calculating Medial Axis...", self.displayResult
         )
@@ -1083,8 +1188,32 @@ class MedialAxisTransformWidget(SimpleWidget):
         self.displayImage(name)
         if self.options.value("return distances"):
             self.operation.result = self.operation.distances
-            self.name = " edt"
+            name = " edt"
             self.displayImage(name, colormap="inferno")
+
+    def kimimaroOptionsButtonPressed(self):
+        self.kimimaroOptions = self.getKimimaroOptions()
+        optionsPerRow = 2
+        sameRowSet = set()
+        counter = 0
+        allProps = self.kimimaroProps.keys()
+        for prop in allProps:
+            if not counter == 0 and not counter % optionsPerRow == 0:
+                sameRowSet.add(prop)
+            counter = counter + 1
+        widget = OptionsWidget(
+            self.viewer,
+            self.kimimaroOptions,
+            layout_type="grid",
+            client=self,
+            sameRowSet=sameRowSet,
+        )
+        widget.addOKButton(None)
+        widget.addApplyButton(None)
+        widget.addCancelButton(None)
+        self.viewer.window.add_dock_widget(
+            widget, area="right", tabify=True, name="Options of Kimimaro"
+        )
 
 
 class MeasureLabelsWidget(SimpleWidget):
@@ -1096,7 +1225,6 @@ class MeasureLabelsWidget(SimpleWidget):
 
     def optionsButtonPressed(self):
         self.regionPropOptions = self.getRegionPropsOptions()
-        self.regionPropOptions.load()
         optionsPerRow = 2
         sameRowSet = set()
         counter = 0

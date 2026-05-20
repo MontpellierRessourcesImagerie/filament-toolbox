@@ -22,6 +22,7 @@ from ._widget import LabelWidget
 from ._widget import LocalThicknessWidget
 from ._widget import MeasureLabelsWidget
 from ._widget import MeasureSkeletonWidget
+from ._widget import MedialAxisTransformWidget
 from ._widget import MedianFilterWidget
 from ._widget import MeijeringFilterWidget
 from ._widget import MetricsWidget
@@ -39,7 +40,7 @@ from ._widget import ThresholdWidget
 __all__ = (
     "napari_get_reader",
     "make_sample_data",
-    "MedianFilterWidget",
+    "MedialAxisTransformWidget",
     "MedianFilterWidget",
     "AnisotropicDiffusionFilterWidget",
     "RollingBallWidget",
