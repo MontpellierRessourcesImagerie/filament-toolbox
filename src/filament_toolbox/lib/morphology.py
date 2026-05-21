@@ -104,7 +104,7 @@ class MedialAxisTransform(Filter):
         self.somaInvalidationConst = 300
         self.somaInvalidationScale = 2
 
-        self.anisotropy = (1, 1, 1)
+        self.anisotropy = np.array([1.0, 1.0, 1.0])
         self.dustThreshold = 1000
         self.fixBranching = True
         self.fixBorders = True
@@ -128,6 +128,7 @@ class MedialAxisTransform(Filter):
             self.result, self.distances = medial_axis(
                 self.image, return_distance=self.returnDistances
             )
+            self.distances = self.distances * self.anisotropy[0]
 
     def runKimimaro(self):
         teasarParams = {
@@ -151,17 +152,21 @@ class MedialAxisTransform(Filter):
             fix_avocados=self.fixAvocados,
             parallel=self.parallel,
         )
-        print("calculation finished")
+        if self.image.ndim == 3:
+            self.image = self.image.transpose(2, 1, 0)
         self.result = np.zeros_like(self.image)
         self.distances = np.zeros_like(self.image)
+        anisotropy = self.anisotropy
         for labelID, skel in self.skels.items():
-            print("labelID:", labelID)
             vertices = skel.vertices
             radii = skel.radii
+            if self.image.ndim == 2:
+                vertices = vertices[:, :2]
+                anisotropy = anisotropy[:2]
             for edge in skel.edges:
                 line = line_nd(
-                    vertices[edge[0]],
-                    vertices[edge[1]],
+                    vertices[edge[0]] / anisotropy,
+                    vertices[edge[1]] / anisotropy,
                     endpoint=True,
                 )
                 self.distances[line] = radii[edge[0]]  ## edge 0 or 1 ?

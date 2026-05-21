@@ -1065,7 +1065,7 @@ class MedialAxisTransformWidget(SimpleWidget):
             "pdrf exponent": 4,
             "soma acceptance threshold": 3500,
             "soma detection threshold": 750,
-            "soma invalidation threshold": 300,
+            "soma invalidation const": 300,
             "soma invalidation scale": 2,
             "dust threshold": 1000,
             "fix branching": True,
@@ -1110,8 +1110,8 @@ class MedialAxisTransformWidget(SimpleWidget):
             value=self.kimimaroProps["soma detection threshold"],
         )
         options.addInt(
-            "soma invalidation threshold",
-            value=self.kimimaroProps["soma invalidation threshold"],
+            "soma invalidation const",
+            value=self.kimimaroProps["soma invalidation const"],
         )
         options.addInt(
             "soma invalidation scale",
@@ -1137,13 +1137,13 @@ class MedialAxisTransformWidget(SimpleWidget):
         self.operation = MedialAxisTransform(self.imageLayer.data)
         self.operation.method = self.options.value("method")
         self.operation.returnDistances = self.options.value("return distances")
-        print("method", self.options.value("method"))
         if self.options.value("method") == "ridge of edf":
             self.applyRidgeOfEDF()
         if self.options.value("method") == "kimimaro (teasar)":
             self.applyKimiaro()
 
     def applyRidgeOfEDF(self):
+        self.operation.anisotropy = self.imageLayer.scale
         self.runOperationInThread(
             "Calculating Medial Axis...", self.displayResult
         )
@@ -1162,13 +1162,20 @@ class MedialAxisTransformWidget(SimpleWidget):
         self.operation.somaDetectionThreshold = self.kimimaroOptions.value(
             "soma detection threshold"
         )
-        self.operation.somaInvalidationThreshold = self.kimimaroOptions.value(
-            "soma invalidation threshold"
+        self.operation.somaInvalidationConst = self.kimimaroOptions.value(
+            "soma invalidation const"
         )
         self.operation.somaInvalidationScale = self.kimimaroOptions.value(
             "soma invalidation scale"
         )
-        self.operation.anisotropy = list(self.imageLayer.scale)
+        scale = self.imageLayer.scale
+        if len(scale) == 2:
+            scale = scale.tolist()
+            scale.append(scale[1])
+        else:
+            scale = list(reversed(np.array(scale).tolist()))
+        self.operation.anisotropy = np.array(scale)
+        print("anisotropy", self.operation.anisotropy)
         self.operation.dustThreshold = self.kimimaroOptions.value(
             "dust threshold"
         )

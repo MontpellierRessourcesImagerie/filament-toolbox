@@ -42,7 +42,9 @@ dependencies = [
     "brightest-path-lib",
     "napari-plot-profile",
     "localthickness",
-    "auto-options-python"
+    "auto-options-python",
+    "crackle-codec",
+    "kimimaro"
 ]
 
 [project.optional-dependencies]
