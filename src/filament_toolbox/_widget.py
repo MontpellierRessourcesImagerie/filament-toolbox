@@ -809,7 +809,7 @@ class RemoveSmallObjectsWidget(SimpleWidget):
     def apply(self):
         self.imageLayer = self.widget.getImageLayer("labels")
         self.operation = RemoveSmallObjects(self.imageLayer.data)
-        self.operation.min_size = self.options.value("max. size")
+        self.operation.max_size = self.options.value("max. size")
         self.runOperationInThread(
             "Removing small objects...", self.displayResult
         )
