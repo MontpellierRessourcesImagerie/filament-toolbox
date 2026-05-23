@@ -116,6 +116,18 @@ class SimpleWidget(QWidget):
         self.imageLayer = None
         self.createLayout()
 
+    @classmethod
+    def baseURL(cls):
+        return "https://github.com/MontpellierRessourcesImagerie/filament-toolbox/wiki/"
+
+    @classmethod
+    def page(cls):
+        return ""
+
+    @classmethod
+    def url(cls):
+        return cls.baseURL() + cls.page()
+
     def addModesOption(self, options):
         options.addChoice("mode", choices=self.modes, value=self.modes[0])
 
@@ -128,6 +140,7 @@ class SimpleWidget(QWidget):
             sameRowSet=self.sameRowSet,
         )
         self.widget.addApplyButton(self.apply)
+        self.widget.addHelpButton(self.url())
         layout = QVBoxLayout()
         layout.addWidget(self.widget)
         self.setLayout(layout)
@@ -177,6 +190,10 @@ class SimpleWidget(QWidget):
         if callback is not None:
             worker.finished.connect(callback)
         worker.start()
+
+    @classmethod
+    def helpURL(self):
+        return "https://github.com/MontpellierRessourcesImagerie/filament-toolbox/wiki"
 
 
 class MorphologySimpleWidget(SimpleWidget):
@@ -240,6 +257,10 @@ class AnisotropicDiffusionFilterWidget(SimpleWidget):
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__(viewer)
 
+    @classmethod
+    def page(cls):
+        return "Anisotropic-Diffusion-Filter"
+
     def getOptions(self):
         options = Options("Filament Toolbox", "anisotropic_diffusion_filter")
         options.addImage()
@@ -273,6 +294,10 @@ class MeasureSkeletonWidget(SimpleWidget):
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__(viewer)
 
+    @classmethod
+    def page(cls):
+        return "Measure-Skeleton"
+
     def getOptions(self):
         options = Options("Filament Toolbox", "measure_skeleton")
         options.addImage()
@@ -301,6 +326,10 @@ class GaussianFilterWidget(SimpleWidget):
 
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__(viewer, sameRowSet={"sigma z"})
+
+    @classmethod
+    def page(cls):
+        return "Gaussian-Filter"
 
     def getOptions(self):
         options = Options("Filament Toolbox", "gaussian_filter")
@@ -333,6 +362,10 @@ class IsotropicResamplingWidget(SimpleWidget):
 
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__(viewer)
+
+    @classmethod
+    def page(cls):
+        return "Isotropic-Resampling"
 
     def getOptions(self):
         options = Options("Filament Toolbox", "isotropic_resampling")
@@ -368,6 +401,10 @@ class MedianFilterWidget(SimpleWidget):
 
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__(viewer, sameRowSet={"size z", "radius"})
+
+    @classmethod
+    def page(cls):
+        return "Median-Filter"
 
     def getOptions(self):
         options = Options("Filament Toolbox", "median_filter")
@@ -453,6 +490,10 @@ class RollingBallWidget(SimpleWidget):
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__(viewer)
 
+    @classmethod
+    def page(cls):
+        return "Background-Subtraction-(Rolling-Ball-Algorithm)"
+
     def getOptions(self):
         options = Options("Filament Toolbox", "rolling_ball")
         options.addImage()
@@ -516,6 +557,10 @@ class FrangiFilterWidget(RidgeFilterWidget):
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__(viewer)
 
+    @classmethod
+    def page(cls):
+        return "Frangi-Filter"
+
     def getOptions(self):
         options = Options(
             applicationName="Filament Toolbox", optionsName="frangi_filter"
@@ -557,6 +602,10 @@ class SatoFilterWidget(RidgeFilterWidget):
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__(viewer)
 
+    @classmethod
+    def page(cls):
+        return "Sato-Filter"
+
     def getOptions(self):
         options = Options(
             applicationName="Filament Toolbox", optionsName="sato_filter"
@@ -587,6 +636,10 @@ class MeijeringFilterWidget(RidgeFilterWidget):
 
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__(viewer)
+
+    @classmethod
+    def page(cls):
+        return "Meijering-Filter"
 
     def getOptions(self):
         options = Options(
@@ -680,6 +733,10 @@ class DilationWidget(MorphologyBasicOperationWidget):
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__(viewer, sameRowSet={"radius"})
 
+    @classmethod
+    def page(cls):
+        return "Dilate"
+
     def imageTitleAddition(self):
         return "dilation"
 
@@ -715,6 +772,10 @@ class ClosingWidget(MorphologyBasicOperationWidget):
 
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__(viewer, sameRowSet={"radius"})
+
+    @classmethod
+    def page(cls):
+        return "Closing"
 
     def imageTitleAddition(self):
         return "close"
@@ -754,6 +815,10 @@ class LabelWidget(SimpleWidget):
         self.widget.widgets["image"][1].currentTextChanged.connect(
             self.onSelectedImageChanged
         )
+
+    @classmethod
+    def page(cls):
+        return "Label"
 
     def getOptions(self):
         options = Options(
@@ -797,6 +862,10 @@ class RemoveSmallObjectsWidget(SimpleWidget):
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__(viewer)
 
+    @classmethod
+    def page(cls):
+        return "Remove-Small-Objects"
+
     def getOptions(self):
         options = Options(
             "Filament Toolbox", optionsName="remove_small_objects"
@@ -824,6 +893,10 @@ class ClearBorderWidget(SimpleWidget):
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__(viewer)
 
+    @classmethod
+    def page(cls):
+        return "Clear-Borders"
+
     def getOptions(self):
         options = Options("Filament toolbox", "clear border")
         options.addLabels()
@@ -848,6 +921,10 @@ class SkeletonizeWidget(SimpleWidget):
         self.widget.widgets["labels"][1].currentTextChanged.connect(
             self.onLayerChanged
         )
+
+    @classmethod
+    def page(cls):
+        return "Skeletonize"
 
     def getOptions(self):
         options = Options("Filament toolbox", "skeletonize")
@@ -915,6 +992,10 @@ class BrightestPathTracingWidget(SimpleWidget):
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__(viewer)
 
+    @classmethod
+    def page(cls):
+        return "Brightest-Path-Tracing"
+
     def getOptions(self):
         options = Options(
             applicationName="Filament Toolbox",
@@ -952,6 +1033,10 @@ class MetricsWidget(SimpleWidget):
         self.results = {}
         self.layer1 = None
         self.layer2 = None
+
+    @classmethod
+    def page(cls):
+        return "Calculate-Metrics"
 
     def getOptions(self):
         options = Options("Filament Toolbox", "metrics")
@@ -1004,6 +1089,10 @@ class EuclideanDistanceTransformWidget(SimpleWidget):
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__(viewer)
 
+    @classmethod
+    def page(cls):
+        return "Euclidean-Distance-Transform"
+
     def getOptions(self):
         options = Options("Filament Toolbox", "edt")
         options.addImage()
@@ -1026,6 +1115,10 @@ class LocalThicknessWidget(SimpleWidget):
 
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__(viewer)
+
+    @classmethod
+    def page(cls):
+        return "Local-Thickness"
 
     def getOptions(self):
         options = Options("Filament Toolbox", "local_thickness")
@@ -1078,6 +1171,10 @@ class MedialAxisTransformWidget(SimpleWidget):
         self.widget.addButton(
             "kimimaro options", callback=self.kimimaroOptionsButtonPressed
         )
+
+    @classmethod
+    def page(cls):
+        return "Medial-Axis-Transform"
 
     def getOptions(self):
         options = Options("Filament Toolbox", "mat")
@@ -1229,6 +1326,10 @@ class MeasureLabelsWidget(SimpleWidget):
         super().__init__(viewer)
         self.widget.addButton("Options", self.optionsButtonPressed)
         self.regionPropOptions = None
+
+    @classmethod
+    def page(cls):
+        return "Measure-Labels"
 
     def optionsButtonPressed(self):
         self.regionPropOptions = self.getRegionPropsOptions()
